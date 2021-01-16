@@ -1,0 +1,133 @@
+mode: auto
+
+avatar:
+  url: /images/avatar.jpg
+  status:
+    enable: true
+    emoji: 🌑
+    message: Looking for dawn.
+
+banner:
+  enable: true
+  title: 日常
+  src: /js/ui/banner.js
+  border: true
+  cloud:
+    enable: true
+    color: "white"
+  go_down:
+    enable: false
+    icon: icon-arrow-down-s-line
+
+reward:
+  enable: false
+  comment: 我很可爱，请给我钱
+
+notice:
+    enable: false
+
+bg_image:
+    enable: true
+    url: /images/index.jpg
+    opacity: 0.8
+
+fireworks:
+    enable: false
+
+avatar:
+    enable: false
+
+comment:
+  tips:
+
+github_issues:
+  enable: true
+
+github_discussions:
+  enable: false
+
+disqusjs:
+  enable: true
+  shortname: yunyoujun
+  apikey: ouoGQCaamOKdJgyZU5DKcpFnRIg3SNzvk0nwygPtlcTRJuE68c8igvrZGW4wAJoN
+
+footer:
+  since: 2016
+  beian:
+    enable: false
+    icp: 
+  custom_text: 
+
+engine_search:
+  enable: false
+
+# If you want to use it, you need config algolia appID in _config.yml!!!
+# https://github.com/oncletom/hexo-algolia
+algolia_search:
+  enable: false
+
+google_analytics:
+  enable: false
+  id: UA-121354150-1
+
+leancloud_visitors:
+  enable: false
+  app_id: 
+  app_key: 
+  server_url: 
+
+google_adsense:
+  enable: false
+  client: 
+
+post_edit:
+  enable: false
+  url: 
+
+albums:
+  enable: false
+
+girls:
+  enable: false
+
+tags:
+  动画: crimson
+  漫画: orange
+  Parcel: "#21374b"
+  学习: saddlebrown
+  MAD: crimson
+  教程: royalblue
+  笔记: dimgray
+  分享: "#0078e7"
+  随笔: mediumpurple
+  Blender: "#d04d2d"
+  Linux: "#2577b1"
+  中传: "#ccb44b"
+  部落: "#DD306A"
+  科幻: midnightblue
+
+categories:
+  云游的小视频: "#FB7299"
+
+pages:
+
+menu:
+  custom:
+
+cursor:
+  enable: true
+
+baidu_push: false
+
+google_tagmanager:
+  enable: false
+  id: 
+
+wordcount:
+  enable: true
+
+say:
+  enable: true
+  api: /data/sentences.json
+  hitokoto:
+    enable: false
