@@ -1,0 +1,68 @@
+mode: light
+
+favicon: /images/favicon.ico
+
+#colors:
+#    primary: '#424c50'
+#    bg: '#C4C4F0'
+
+avatar:
+  enable: true
+  url: /images/avatar.png
+  opacity: 1
+  status:
+    enable: false
+    message: nichijou.
+
+banner:
+  enable: true
+  title: 日常
+  src: /js/ui/banner.js
+  border: true
+  cloud:
+    enable: false
+    color: "blue"
+  go_down:
+    enable: false
+    icon: icon-arrow-down-s-line
+
+sidebar:
+    bg_image: /images/sidebar.png
+    color: '#C4C4F0'
+
+bg_image:
+    enable: true
+    url: /images/index.jpg
+    opacity: 1
+fireworks:
+    enable: false
+
+social:
+  - name: GitHub
+    link: https://github.com/in-a-day
+    icon: icon-github-line
+    color: "#6e5494"
+
+codeblock:
+  copy_btn: true
+  prismjs:
+    light: default
+    dark: tomorrow
+
+pages:
+
+archive: 
+  last_word: ...
+
+say:
+  enable: true
+  api: /data/sentences.json
+  hitokoto:
+    enable: false
+
+reward:
+  enable: false
+
+footer:
+  since: 2021	
+  powered: true
