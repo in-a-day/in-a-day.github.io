@@ -1,1 +1,1 @@
-[nichijou.cloud](https://nichijou.com)
+[nichijou.cloud](https://nichijou.cloud)
