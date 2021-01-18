@@ -1,6 +1,6 @@
 mode: light
 
-favicon: /images/favicon.ico
+favicon: https://cdn.jsdelivr.net/gh/in-a-day/in-a-day.github.io@gh-pages/images/favicon.ico
 
 #colors:
 #    primary: '#424c50'
@@ -8,7 +8,7 @@ favicon: /images/favicon.ico
 
 avatar:
   enable: true
-  url: /images/avatar.png
+  url: https://cdn.jsdelivr.net/gh/in-a-day/in-a-day.github.io@gh-pages/images/avatar.png
   opacity: 1
   status:
     enable: false
@@ -32,7 +32,7 @@ sidebar:
 
 bg_image:
     enable: true
-    url: /images/index.jpg
+    url: https://cdn.jsdelivr.net/gh/in-a-day/in-a-day.github.io@gh-pages/images/index.jpg
     opacity: 1
 fireworks:
     enable: false
@@ -49,6 +49,9 @@ codeblock:
     light: default
     dark: tomorrow
 
+post_card:
+    opacity: 0.8
+
 pages:
 
 archive: 
@@ -64,5 +67,14 @@ reward:
   enable: false
 
 footer:
+  live_time:
+      enable: false
   since: 2021	
-  powered: true
+  powered:
+      enable: true
+
+creative_commmons:
+    post: false
+
+search:
+    modal: true
