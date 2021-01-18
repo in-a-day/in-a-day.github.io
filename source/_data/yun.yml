@@ -1,6 +1,6 @@
 mode: light
 
-favicon: https://cdn.jsdelivr.net/gh/in-a-day/in-a-day.github.io@gh-pages/images/favicon.ico
+favicon: /images/favicon.ico
 
 #colors:
 #    primary: '#424c50'
@@ -8,7 +8,7 @@ favicon: https://cdn.jsdelivr.net/gh/in-a-day/in-a-day.github.io@gh-pages/images
 
 avatar:
   enable: true
-  url: https://cdn.jsdelivr.net/gh/in-a-day/in-a-day.github.io@gh-pages/images/avatar.png
+  url: /images/avatar.png
   opacity: 1
   status:
     enable: false
@@ -27,12 +27,12 @@ banner:
     icon: icon-arrow-down-s-line
 
 sidebar:
-    bg_image: /images/sidebar.png
+    bg_image: /images/index.jpg
     color: '#C4C4F0'
 
 bg_image:
     enable: true
-    url: https://cdn.jsdelivr.net/gh/in-a-day/in-a-day.github.io@gh-pages/images/index.jpg
+    url: /images/index.jpg
     opacity: 1
 fireworks:
     enable: false
@@ -76,5 +76,43 @@ footer:
 creative_commmons:
     post: false
 
-search:
-    modal: true
+engine_search:
+    enable: false
+
+local_search:
+    enable: true
+    src: /js/search/local-search.js
+
+comment:
+    enable: false
+
+github_issues:
+    enable: false
+
+github_discussions:
+    enable: false
+
+wordcount: 
+    enable: false
+
+tags:
+    java: crimson
+    spring: orange
+    python: "#21374b"
+    linux: saddlebrown
+    java-base: crimson
+    算法: royalblue
+    笔记: dimgray
+    分享: "#0078e7"
+    随笔: mediumpurple
+    Blender: "#d04d2d"
+    Linux: "#2577b1"
+    中传: "#ccb44b"
+    部落: "#DD306A"
+    科幻: midnightblue
+
+menu:
+    custom:
+        title: 文档
+        path: https://nichijou.cloud
+        icon: icon-settings-line
