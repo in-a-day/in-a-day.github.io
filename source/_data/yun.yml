@@ -27,8 +27,10 @@ banner:
     icon: icon-arrow-down-s-line
 
 sidebar:
-    bg_image: /images/index.jpg
-    color: '#C4C4F0'
+    bg_image: 
+    tagcloud:
+        enable: true
+        amount: 20
 
 bg_image:
     enable: true
@@ -73,6 +75,9 @@ footer:
   powered:
       enable: true
 
+wordcloud:
+    enable: true
+
 creative_commmons:
     post: false
 
@@ -92,8 +97,9 @@ github_issues:
 github_discussions:
     enable: false
 
-wordcount: 
-    enable: false
+katex:
+    copy_tex: true
+    global: true
 
 tags:
     java: crimson
