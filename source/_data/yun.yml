@@ -1,6 +1,6 @@
 mode: light
 
-favicon: /images/favicon.ico
+favicon: https://cdn.jsdelivr.net/gh/in-a-day/cdn@main/images/blog/favicon.ico
 
 #colors:
 #    primary: '#424c50'
@@ -8,7 +8,7 @@ favicon: /images/favicon.ico
 
 avatar:
   enable: true
-  url: /images/avatar.png
+  url: https://cdn.jsdelivr.net/gh/in-a-day/cdn@main/images/blog/avatar.png
   opacity: 1
   status:
     enable: false
@@ -34,7 +34,7 @@ sidebar:
 
 bg_image:
     enable: true
-    url: /images/index.jpg
+    url: https://cdn.jsdelivr.net/gh/in-a-day/cdn@main/images/blog/index.jpg
     opacity: 1
 fireworks:
     enable: false
