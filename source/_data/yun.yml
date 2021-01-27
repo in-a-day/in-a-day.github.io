@@ -34,7 +34,7 @@ sidebar:
 
 bg_image:
     enable: true
-    url: https://cdn.jsdelivr.net/gh/in-a-day/cdn@main/images/blog/index.jpg
+    url: https://purge.jsdelivr.net/gh/in-a-day/cdn@main/images/blog/index.jpg
     opacity: 1
 fireworks:
     enable: false
