@@ -19,7 +19,7 @@ MLFQ拥有不同的队列, 每个队列都有不同的优先级. 在任意时间
 一个队列中可能存在多个任务, 这些任务拥有相同的优先级, 在这种情况下我们使用round-robin调度策略.  
 综上, MLFQ基本规则:
 - Rule1: If Priority(A) > Priority(B), A runs.
-- Rule2: If priority(A) = Priority(B), A & B run in RR.
+- Rule2: If priority(A) = Priority(B), A & B run in RR ({% post_link os/process_schedule %}).
 
 MLFQ调度的关键在于如何设置优先级. MLFQ基于观察行为改变改变任务的优先级.MLFQ从任务运行历史中学习, 并根据历史预测任务的未来行为.
 
