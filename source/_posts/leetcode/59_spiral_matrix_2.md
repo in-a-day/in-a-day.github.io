@@ -20,9 +20,6 @@ Output: [[1]]
 
 ## 题解
 顺时针插入: 左上->右上, 右上->右下, 右下->左下, 左下->左上
-row 记录插入的行
-col 记录插入的列
-count 记录插入的个数
 
 ### python
 ```python
@@ -63,4 +60,38 @@ class Solution:
             col_start += 1
 
         return res
+```
+
+```java
+class Solution {
+    public int[][] generateMatrix(int n) {
+        if (n <= 0) return new int[0][0];           
+        int[][] res = new int[n][n];
+        int row_start = 0, col_start = 0;
+        int row_end = n - 1, col_end = n - 1;
+        int count = 1;
+        while (row_start <= row_end && col_start <= col_end) { 
+            for (int i = col_start; i <= col_end; i++) {
+                res[row_start][i] = count++;
+            }
+            row_start++;
+
+            for (int i = row_start; i <= row_end; i++) {
+                res[i][col_end] = count++;
+            }
+            col_end--;
+
+            for (int i = col_end; i >= col_start; i--) {
+                res[row_end][i] = count++;
+            }
+            row_end--;
+
+            for (int i = row_end; i >= row_start; i--) {
+                res[i][col_start] = count++;
+            }
+            col_start++;
+        }
+        return res;
+    }
+}
 ```
