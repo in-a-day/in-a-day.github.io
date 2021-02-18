@@ -16,6 +16,7 @@ Output: 1->2->3->4->5
 ```
 
 ## 题解
+### python
 ```python
 # Definition for singly-linked list.
 # class ListNode:
