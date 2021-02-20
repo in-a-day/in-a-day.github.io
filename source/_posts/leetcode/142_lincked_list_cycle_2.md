@@ -32,6 +32,7 @@ Explanation: 链表的第二个节点是环的入口, 返回第二个节点.
 则: 
 1. $2 * (s1 + s2) = s1 + n * (s2 + s3) + s2$
 2. $s1 = (n - 1) * (s2 + s3) + s3$  
+s1 + s2 + n1 * (s2 + s3) = s1 + n2 * (s2 + s3) + s2
 
 由上, 当fast和slow相遇时, 此时slow指针再前进长度为s3完成一次环, 由最后一个公式可得: 将fast指针指向head节点, 且slow与fast每次都走1步,则再次相遇的位置即环的起始位置(slow相遇后再走的距离刚好是$(n - 1) * (s2 + s3) + s3$).
 
@@ -45,8 +46,40 @@ Explanation: 链表的第二个节点是环的入口, 返回第二个节点.
 
 class Solution:
     def detectCycle(self, head: ListNode) -> ListNode:
+        slow = fast = head
+        while fast and fast.next:
+            # 保证slow走一步fast走两步
+            slow = slow.next
+            fast = fast.next.next
+            if fast == slow:
+                # 将fast指针指向head节点
+                fast = head
+                while fast != head:
+                    fast = fast.next
+                    slow = slow.next
+                return fast
+        return None
 ```
 
 ### java
 ```java
+public class Solution {
+    public ListNode detectCycle(ListNode head) {
+        ListNode slow = head;       
+        ListNode fast = head;
+        while (fast != null && fast.next != null) {
+            slow = slow.next;
+            fast = fast.next.next;
+            if (slow == fast) {
+                fast = head;
+                while (slow != fast) {
+                    slow = slow.next;
+                    fast = fast.next;
+                }
+                return fast;
+            }
+        }
+        return null;
+    }
+}
 ```
