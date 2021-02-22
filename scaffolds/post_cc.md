@@ -1,6 +1,6 @@
 ---
 title: {{ title }}
 date: {{ date }}
-tags: [os]
-categories: os
+tags: [java, 多线程]
+categories: java
 ---
