@@ -59,8 +59,8 @@ class Solution {
         if (s == null || t == null || s.length() != t.length()) return false;
         int[] lst = new int[26];
         for (int i = 0; i < s.length(); i++) {
-            lst[s.charAt(i) - 'a'] += 1;
-            lst[t.charAt(i) - 'a'] -= 1;
+            lst[s.charAt(i) - 'a']++;
+            lst[t.charAt(i) - 'a']--;
         }
         for (int i : lst) {
             if (i != 0) return false;
