@@ -42,7 +42,7 @@ thread.getState()
 #### RUNNABLE
 > 可运行线程状态. 处于该状态的线程运行于JVM中, 但是可能并未在操作系统中运行. 所以Java的runnable状态线程对应操作系统中的就绪态和运行态.
 
-#### Blocked
+#### BLOCKED
 > 线程阻塞等待监视器锁的状态. 处于该状态的线程等待获取监视器锁进入同步块/方法, 或者在调用Object.wait方法后重入同步块/方法.
 
 ### WAITING
