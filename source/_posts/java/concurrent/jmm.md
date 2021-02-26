@@ -151,7 +151,7 @@ JMM对于volatile和monitor的指令重排序规则:
 在Load2及后续读取操作执行前, 保证Store1的写入对所有的处理器可见. 其开销是四种屏障中最大的. 在大多数处理器实现中, 这个屏障是万能屏障, 兼具其他三种内存屏障的功能.
 
 Java编译器内存屏障使用方式:
-![jmm_volatile_monitor_rule](https://cdn.jsdelivr.net/gh/in-a-day/cdn@main/images/java/concurrent/memory_barrier_rule.png)_内存屏障规则_
+![jmm_volatile_monitor_rule](https://cdn.jsdelivr.net/gh/in-a-day/cdn@main/images/java/concurrent/memory_barrier_rule_new.png)_内存屏障规则_
 
 
 
