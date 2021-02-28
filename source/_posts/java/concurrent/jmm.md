@@ -60,8 +60,8 @@ Java内存模式同时规定了在执行以上8中操作的同时必须同时满
 - 如果一个变量没有被lock锁定, 那么不允许对其执行unlock, 也不允许区unlock被其他线程锁定的变量.
 - 对一个变量执行unlock之前, 必须把此变量同步回主内存中(执行store, write操作).
 
-### volatile变量特殊规则
-valatile变量两个特性:
+### volatile变量
+#### valatile变量两个特性:
 1. 保证变量对所有线程可见性, 一个线程修改了变量的值, 其他线程可以立即得知.但是并不保证变量操作的原子性.
 ```java
     public static volatile int a = 0;
@@ -80,7 +80,82 @@ valatile变量两个特性:
 
 ```
 上述代码每次执行的结果都会小于200000, 说明volatile并不会保证变量操作的原子性.
+
 2. 禁止指令重排序优化
+cpu在执行一系列指令的时候, 在不影响单线程的执行结果下, 可能会将指令重新排序. Java的运行时编译器(JIT)也会将也会将执行进行重排序.Java中有个as-if-serial术语表示不管如何重排序, 必须保证单线程下重排序的结果与本身应有的结果是一致的.
+例如一下代码:
+```java
+int a = 0;
+int b = 1;
+int c = a + b;
+```
+以上代码在执行时大致有一下几个步骤:
+```
+1. a赋值0
+2. b赋值1
+3. 取a值
+4. 取b的值
+5. 将a, b值相加存入c
+```
+
+以上动作有很多种重排序的方式(例如2, 1, 3, 4, 5), 但是必须保证在动作5执行之前, a, b的值是正确的值.  
+接下来看一个指令重排序的例子:
+```java
+    static int a = 0, b = 0, c = 0, d = 0;
+    public static void main(String[] args) throws InterruptedException {
+        int count = 0;
+        while (true) {
+            a = b = c = d = 0;
+            Thread t1 = new Thread(() -> {
+                a = 1;
+                b = c;
+            });
+
+            Thread t2 = new Thread(() -> {
+                c = 1;
+                d = a;
+            });
+            t1.start();
+            t2.start();
+            t1.join();
+            t2.join();
+            count++;
+            if (b == 0 && d == 0) {
+                System.out.println("产生重排序: " + count +  ", b: " + b + ", d: " + d);
+                break;
+            }
+        }
+    }
+```
+上述代码如果没有指令重排序, 运行结果可能为b, d的结果可能是以下几种: (1, 0), (0, 1), (1, 1). 然而在实际运行情况下会打印出b, d结果为(0, 0)的情况(测试用了354062次), 说明了存在指令重排序. 可能是线程t1中重排序了`b = c;a = 1`, 或是t2重排序`d = a; c = 1;`, 又或是二者都进行了重排序.
+
+
+### volatile 和 monitor
+JMM对于volatile和monitor的指令重排序规则:
+![jmm_volatile_monitor_rule](https://cdn.jsdelivr.net/gh/in-a-day/cdn@main/images/java/concurrent/jmm_volatile_monitor_rule.png)_JMM对于volatile和monitor的指令重排序规则_
+
+
+### 内存屏障(memory)
+内存屏障有以下几种:
+#### LoadLoad屏障
+语句: Load1; LoadLoad; Load2;  
+在Load2及后续读取操作要读取的数据被访问前, 保证Load1要读取的数据被读取完毕.
+#### StoreStore屏障
+语句: Store1; StoreStore; Store2;
+在Store2及后续写入操作执行前, 保证Store1的写入操作对其他处理器可见.
+#### LoadStore屏障
+语句: Load1; LoadStore; Store2;
+在Store2及后续写入操作执行前, 保证Load1要读取的数据被读取完毕.
+#### StoreLoad屏障
+语句: Store1; StoreLoad; Load2;
+在Load2及后续读取操作执行前, 保证Store1的写入对所有的处理器可见. 其开销是四种屏障中最大的. 在大多数处理器实现中, 这个屏障是万能屏障, 兼具其他三种内存屏障的功能.
+
+Java编译器内存屏障使用方式:
+![jmm_volatile_monitor_rule](https://cdn.jsdelivr.net/gh/in-a-day/cdn@main/images/java/concurrent/memory_barrier_rule_new.png)_内存屏障规则_
+
+
+
+
 
 
 
