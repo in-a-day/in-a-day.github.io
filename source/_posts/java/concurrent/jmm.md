@@ -129,6 +129,9 @@ int c = a + b;
 ```
 上述代码如果没有指令重排序, 运行结果可能为b, d的结果可能是以下几种: (1, 0), (0, 1), (1, 1). 然而在实际运行情况下会打印出b, d结果为(0, 0)的情况(测试用了354062次), 说明了存在指令重排序. 可能是线程t1中重排序了`b = c;a = 1`, 或是t2重排序`d = a; c = 1;`, 又或是二者都进行了重排序.
 
+**由于volatile变量只能保证可见性, 在不符合以下两条规则的运算场景中, 仍然需要加锁来保证原子性:**
+- 运算结果并不依赖变量当前的值, 或者能保证只有单一的线程修改变量的值.
+- 变量不需要与其他的状态变量共同参与不变约束.
 
 ### volatile 和 monitor
 JMM对于volatile和monitor的指令重排序规则:
@@ -152,6 +155,40 @@ JMM对于volatile和monitor的指令重排序规则:
 
 Java编译器内存屏障使用方式:
 ![jmm_volatile_monitor_rule](https://cdn.jsdelivr.net/gh/in-a-day/cdn@main/images/java/concurrent/memory_barrier_rule_new.png)_内存屏障规则_
+
+
+### Happens-Before(先行发生原则)
+> Java happens-before是Java内存模式中定义的两项操作间的偏序关系. 如A操作happens-before与B操作, 则在B操作发生之前, A操作的产生的影响能被B操作观察到. 例如以下代码:
+```java
+// A操作
+i = 1;
+// B操作
+j = i;
+```
+在B操作完成之前, A操作一定先完成.
+
+**NB:**
+**两个操作间存在happens-before关系, 并不意味着Java具体实现按照指定的关系顺序执行, 如果重排序的结果与按happens-before关系来执行的结果一致, 那么JMM也允许这样的重排序.**
+```java
+i = 1;
+j = 2;
+k = i + j;
+```
+**以上代码可能先执行i = 1, 也可能先执行j = 2, 最终结果不影响k = i + j的执行.**
+
+
+#### JMM天然支持的Happens-Before
+> Java无需任何同步手段就可以保证的先行发生规则: 
+
+1. 程序次序规则(Program Order Rule): 在一个线程内, 按照控制流顺序, 书写在前面的操作先行发生于书写在后面的操作.
+2. 管程锁定规则(Monitor Lock Rule): 一个unlock操作先行发生于后面对同一个锁的lock操作. 这里必须是"同一个锁", "后面"指的是时间上的先后.
+3. volatile变量规则(Volatile Variable Rule): 对一个volatile变量的写操作先行发生于后面对这个变量的读操作. "后面"指的是时间上的先后.
+4. 线程启动规则(Thread Start Rule): Thread对象的start()方法先行发生于此线程的每个动作.
+5. 线程终止规则(Thread Termination Rule): 线程中所有操作都先行发生关于对此线程的终止检测. 通过Thread.join()方法是否结束, Thread.isAlive()的返回值等方法检测线程是否已经终止执行. 如果A线程调用了线程B的join()方法并发返回成功, 那么B线程的任意操作都发生于A线程调用B.join()返回成功之前.
+6. 线程中断规则(Thread Interruption Rule): 对线程interrupt()方法的调用先行发生于被中断线程的代码检测到中断事件的发生. 通过Thread.interrupted()方法检测是否有中断发生.
+7. 对象终结规则(Finalizer Rule): 一个对象的初始化完成(构造函数执行结构)先行发生于他的finalize()方法的开始.
+8. 传递性(Transitivity): 如果操作A先行发生于操作B, 操作B先行发生于操作C, 那么就可以得出操作A先行发生于操作C.
+
 
 
 
