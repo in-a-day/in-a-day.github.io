@@ -133,6 +133,45 @@ int c = a + b;
 - 运算结果并不依赖变量当前的值, 或者能保证只有单一的线程修改变量的值.
 - 变量不需要与其他的状态变量共同参与不变约束.
 
+#### 双重检查锁(Double Check Lock, DCL)
+常见的一种错误的DCL单例模式(多线程下):
+```java
+public class Singleton {
+    private static Singleton instance;
+
+    public static Singleton getInstance() {
+        if (instance == null) {
+            synchronized(Singleton.class) {
+                if (instance == null) {
+                    instance = new Singleton();
+                }
+            }
+        }
+        return instance;
+    }
+}
+```
+以上代码在多线程情况下可能会导致错误. 线程可能获取值为`null`的`instance`, 这是由于`instance = new Singleton`语句可能会发生重排序.
+```java
+instance = new Singleton();
+
+// 可以分解为以下三个步骤
+1. memory = allocate(); // 分配内存
+2. ctorInstance(memory); // 初始化对象
+3. s = memory // 将s指向刚分配的地址
+
+// 上述三个步骤可能会被重排序
+1. memory = allocate(); // 分配内存
+3. s = memory 
+2. ctorInstance(memory); // 初始化对象
+```
+如果发生了上述的重排序, 那么如果线程A执行到`s=memory`语句, 此时线程B执行, B判断`instance != null`, 而此时的`instance`还并未完成初始化, B就会拿到一个尚未初始化完成的`instance`.  
+解决以上问题只需要将`instance`变量声明为volatile类型, 禁止指令重排序优化:
+```java
+private static volatile Singleton instance;
+```
+
+
 ### volatile 和 monitor
 JMM对于volatile和monitor的指令重排序规则:
 ![jmm_volatile_monitor_rule](https://cdn.jsdelivr.net/gh/in-a-day/cdn@main/images/java/concurrent/jmm_volatile_monitor_rule.png)_JMM对于volatile和monitor的指令重排序规则_
