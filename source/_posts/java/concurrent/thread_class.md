@@ -189,4 +189,51 @@ private static synchronized long nextThreadID() {
 }
 ```
 
+### **Thread字段解析**
+接下来看一下Thread中常用的字段.
+```java
+// 线程名称
+private volatile String name;
+// 优先级
+private int priority;
+// 
+private Thread threadQ;
+// 是否是守护线程
+private boolean daemon = false;
+// 需要执行的任务
+private Runnable target;
+// 线程所属线程组
+private ThreadGroup group;
+// 用于自动编号匿名线程
+private static int threadInitNumber;
+// 线程期望栈的大小
+private long stackSize;
+// 线程id
+private long tid;
+// 生成thread id的seq
+private static long threadSeqNumber;
+// java线程状态
+private volatile int threadStatus = 0;
+// 优先级最小值
+public final static int MIN_PRIORITY = 1;
+// 优先级默认值
+public final static int NORM_PRIORITY = 5;
+// 优先级最大值
+public final static int MAX_PRIORITY = 10;
+```
+
+### **Thread方法解析**
+#### nextThreadNum
+在调用Thread
+```java
+// 自动编号匿名线程
+private static synchronized int nextThreadNum() {
+	return threadInitNumber++;
+}
+```
+
+#### 
+
+
+
 
