@@ -223,8 +223,8 @@ public final static int MAX_PRIORITY = 10;
 ```
 
 ### **Thread方法解析**
-#### nextThreadNum
-在调用Thread
+#### nextThreadNum(): 生成匿名线程号
+创建新线程而没有传入线程名称时, 将调用该方法生成一个匿名线程号, 线程名称为`Thread-`加上该方法生成的number.
 ```java
 // 自动编号匿名线程
 private static synchronized int nextThreadNum() {
@@ -232,8 +232,235 @@ private static synchronized int nextThreadNum() {
 }
 ```
 
-#### 
+#### nextThreadID(): 生成线程id
+创建线程时获取线程的唯一id
+```java
+private static synchronized long nextThreadID() {
+	return ++threadSeqNumber;
+}
+```
 
+#### currentThread(): 获取当前线程
+返回当前正在执行的线程
+```java
+public static native Thread currentThread();
+```
 
+#### **yield(): 线程释放cpu**
+提示调度器当前线程想要释放cpu, 调度器可以忽略该提示, 所以调用该方法不一定释放cpu.
+```java
+public static native void yield();
+```
+
+#### **sleep: 睡眠进程**
+使当前进程进入睡眠状态
+**该方法不会释放线程拥有的锁.**
+如果在线程睡眠时, 其他线程中断该线程, 那么将会重置该线程状态, 同时抛出异常.  
+sleep方法有以下几个重载: 
+```java
+public static native void sleep(long millis) throws InterruptedException;
+```
+
+```java
+public static void sleep(long millis, int nanos)
+throws InterruptedException {
+	if (millis < 0) {
+		throw new IllegalArgumentException("timeout value is negative");
+	}
+
+	if (nanos < 0 || nanos > 999999) {
+		throw new IllegalArgumentException(
+							"nanosecond timeout value out of range");
+	}
+	//还是使用毫秒级
+	if (nanos >= 500000 || (nanos != 0 && millis == 0)) {
+		millis++;
+	}
+
+	sleep(millis);
+}
+```
+
+#### **start(): 启动线程**
+调用该方法进行启动线程; JVM会调用线程的`run`方法.  
+**该方法只能调用一次**
+```java
+public synchronized void start() {
+ 	// 如果线程不是NEW状态, 抛出异常
+	if (threadStatus != 0)
+		throw new IllegalThreadStateException();
+
+	// 线程组中添加该线程, 并将线程组的未启动线程数-1, 启动线程数+1
+	group.add(this);
+
+	boolean started = false;
+	try {
+		// 本地方法
+		start0();
+		started = true;
+	} finally {
+		try {
+			if (!started) {
+				// 启动失败, 从线程组的启动集合中删除线程, 未启动线程数+1, 已启动线程数-1
+				group.threadStartFailed(this);
+			}
+		} catch (Throwable ignore) {
+			/* do nothing. If start0 threw a Throwable then
+			  it will be passed up the call stack */
+		}
+	}
+}
+```
+
+#### **run(): 线程需要执行的方法**
+如果使用构造函数传入Runnable对象, 那么调用该对象的run()方法, 否则什么都不做.子类应该重写这个方法.
+```java
+public void run() {
+	if (target != null) {
+		target.run();
+	}
+}
+```
+
+#### exit(): 清理线程
+在线程完全退出之前, 给线程机会进行清理
+```java
+private void exit() {
+	if (group != null) {
+		group.threadTerminated(this);
+		group = null;
+	}
+	target = null;
+	threadLocals = null;
+	inheritableThreadLocals = null;
+	inheritedAccessControlContext = null;
+	blocker = null;
+	uncaughtExceptionHandler = null;
+}
+```
+
+#### 线程中断相关
+##### interrupt()
+如果线程因调用该类的wait, join, sleep方法阻塞, 调用`interrupt`方法将会重置其中断状, 同时抛出InterruptedException.  
+如果线程因基于InterruptibleChannel的I/O操作阻塞, 那么该channel将会关闭,线程中断状态会被设置, 并抛出java.nio.channels.ClosedByInterruptException.  
+如果线程因 java.nio.channels.Selector阻塞, 线程中断状态将被设置, 并立即从selection操作中返回(可能返回非零值), 就像调用改了selector的wakeup方法.  
+如果没有上述情况发生, 那么线程的中断状态会被设置.  
+中断一个非存活的线程不会有任何影响.  
+```java
+public void interrupt() {
+	if (this != Thread.currentThread())
+		checkAccess();
+
+	synchronized (blockerLock) {
+		Interruptible b = blocker;
+		if (b != null) {
+			// 仅设置中断的状态
+			interrupt0();
+			b.interrupt(this);
+			return;
+		}
+	}
+	interrupt0();
+}
+```
+##### interrupted()
+**测试当前线程是否中断, 调用一次设置中断状态为true, 连续调用两次以上会使线程中断状态转为false.调用了本地方法`isInterrupted(boolean ClearInterrupted)`**
+```java
+public static boolean interrupted() {
+	return currentThread().isInterrupted(true);
+}
+```
+##### isInterrupted()
+测试当前线程是否中断. 该方法不会影响线程的状态.
+```java
+public boolean isInterrupted() {
+	return isInterrupted(false);
+}
+```
+基于ClearInterrupted清空线程中断状态:  
+false不清空; true清空, 即将中断状态设置为false
+##### isInterrupted(boolean ClearInterrupted)
+```java
+private native boolean isInterrupted(boolean ClearInterrupted);
+```
+
+#### isAlive(): 判断线程是否存活
+```java
+public final native boolean isAlive();
+```
+
+#### setName(String name): 设置线程名称
+及时调用了线程的start方法后, 也可以设置线程名称. 线程名称不能为空
+```java
+public final synchronized void setName(String name) {
+	checkAccess();
+	if (name == null) {
+		throw new NullPointerException("name cannot be null");
+	}
+
+	this.name = name;
+	if (threadStatus != 0) {
+		setNativeName(name);
+	}
+}
+```
+
+#### activeCount(): 获取当前线程所属线程组活动线程数量
+```java
+public static int activeCount() {
+	return currentThread().getThreadGroup().activeCount();
+}
+```
+
+#### enumerate(Thread tarray[]): 获取当前线程所有线程
+```java
+public static int enumerate(Thread tarray[]) {
+	return currentThread().getThreadGroup().enumerate(tarray);
+}
+```
+
+#### join及其重载: 等待线程终止
+join方实际上是调用join(0).  
+join(long millis, int nanos)与sleep(long millis, int nanos)相似
+- 如果nanos < 0 或 nanos > 999999抛出异常
+- 如果nanos >= 500000 或 nanos != 0 && millis == 0, millis加一
+- 最后调用join(millis).  
+
+所以下面具体看一下join(long millis)方法.  
+**join实际上是调用了Object的wait方法**
+```java
+public final synchronized void join(long millis)
+throws InterruptedException {
+	long base = System.currentTimeMillis();
+	long now = 0;
+
+	if (millis < 0) {
+		throw new IllegalArgumentException("timeout value is negative");
+	}
+
+	if (millis == 0) {
+		while (isAlive()) {
+			// 实际上是调用了wait方法
+			wait(0);
+		}
+	} else {
+		while (isAlive()) {
+			long delay = millis - now;
+			if (delay <= 0) {
+				break;
+			}
+			wait(delay);
+			now = System.currentTimeMillis() - base;
+		}
+	}
+}
+```
+
+#### isDaemon(): 测试线程是否是守护线程
+```java
+public final boolean isDaemon() {
+	return daemon;
+}
+```
 
 
