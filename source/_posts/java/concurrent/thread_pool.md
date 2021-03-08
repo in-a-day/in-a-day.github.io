@@ -194,4 +194,66 @@ static class DefaultThreadFactory implements ThreadFactory {
 	- ThreadPoolExecutor.DiscardOldestPolicy: 丢弃队列头部(最旧)的任务, 然后重新尝试执行程序(如果失败, 重复此过程).
 	- ThreadPoolExecutor.CallerRunsPolicy: 由调用线程处理该任务.
 
+### TODO ThreadPoolExecutor底层原理
 
+
+## 常见的四种线程池
+Executors类提供了几个静态方法常见线程池, 以下是常见的线程池.
+### FixedThreadPool
+创建固定大小的线程池, 所有线程都是核心线程
+允许的请求队列的长度为Integer.MAX_VALUE, 可能会堆积大量的请求, 导致OOM.
+```java
+public static ExecutorService newFixedThreadPool(int nThreads) {
+    return new ThreadPoolExecutor(nThreads, nThreads,
+                                  0L, TimeUnit.MILLISECONDS,
+                                  new LinkedBlockingQueue<Runnable>());
+}
+```
+
+### SingleThreadExecutor
+仅有一个核心线程, 使用了LinkedBlockingQueue, 可能会堆积大量的请求, 导致OOM.
+```java
+public static ExecutorService newSingleThreadExecutor() {
+    return new FinalizableDelegatedExecutorService
+        (new ThreadPoolExecutor(1, 1,
+                                0L, TimeUnit.MILLISECONDS,
+                                new LinkedBlockingQueue<Runnable>()));
+}
+```
+
+### CachedThreadPool
+没有核心线程, 非核心线程的数量可以是Integer.MAX_VALUE  
+如果任务进入队列成功, 当前没有空闲线程的情况下, 会创建新的非核心线程, 可能会创建大量的线程, 导致OOM.
+```java
+public static ExecutorService newCachedThreadPool() {
+    return new ThreadPoolExecutor(0, Integer.MAX_VALUE,
+                                  60L, TimeUnit.SECONDS,
+                                  new SynchronousQueue<Runnable>());
+}
+```
+
+### ScheduledThreadPool
+线程数量最大为Integer.MAX_VALUE, 可能会存在创建大量线程的情况, 导致OOM.
+```java
+public static ScheduledExecutorService newScheduledThreadPool(int corePoolSize) {
+    return new ScheduledThreadPoolExecutor(corePoolSize);
+}
+
+...
+
+// 调用super进行创建线程池
+public ScheduledThreadPoolExecutor(int corePoolSize) {
+    super(corePoolSize, Integer.MAX_VALUE, 0, NANOSECONDS,
+          new DelayedWorkQueue());
+}
+
+// 底层还是利用ThreadPoolExecutor进行创建
+public ThreadPoolExecutor(int corePoolSize,
+                          int maximumPoolSize,
+                          long keepAliveTime,
+                          TimeUnit unit,
+                          BlockingQueue<Runnable> workQueue) {
+    this(corePoolSize, maximumPoolSize, keepAliveTime, unit, workQueue,
+         Executors.defaultThreadFactory(), defaultHandler);
+}
+```
