@@ -21,7 +21,7 @@ static final int hash(Object key) {
 ```
 
 ### **HashMap属性及其意义**
-- DEFAULT_INITIAL_CAPACIT = 1 <<< 4, 默认的HashMap容量.
+- DEFAULT_INITIAL_CAPACIT = 1 << 4, 默认的HashMap容量.
 - MAXIMUM_CAPACITY = 1 << 30, 最大容量.
 - DEFAULT_LOAD_FACTOR = 0.75f, 装载因子
 - TREEIFY_THRESHOLD = 8, 链表转红黑树的阈值
