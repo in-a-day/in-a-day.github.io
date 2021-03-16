@@ -215,6 +215,75 @@ public enum Isolation {
 }
 ```
 
+### ISOLATION_DEFAULT
+> 使用数据库默认级别
+
+Oracle: Read committed
+Mysql: Repeatable read
+
+Oracle数据库只支持Read committed和Serializable两种隔离等级, 所以Oracle不存在脏读的现象, 但是默认的Read committed 也无法解决不可重复读和幻读的问题.
+
+### ISOLATION_READ_UNCOMMITTED
+> 读未提交, 可能会导致脏读
+
+### ISOLATION_READ_COMMITTED
+> 读已提交, 不会导致脏读, 但是会存在不可重复读, 和幻读问题
+
+### ISOLATION_REPEATABLE_READ
+> 重复读, 解决脏读, 不可重复读, 但还是存在幻读问题
+
+### ISOLATION_SERIALIZABLE
+> 串行化, 脏读, 不可重复读, 幻读都可以解决, 通常情况下不会使用该隔离级别
+
+
+## @Transactional注解
+```java
+@Target({ElementType.TYPE, ElementType.METHOD})
+@Retention(RetentionPolicy.RUNTIME)
+@Inherited
+@Documented
+public @interface Transactional {
+
+	@AliasFor("transactionManager")
+	String value() default "";
+
+    // 指定事务管理器
+	@AliasFor("value")
+	String transactionManager() default "";
+
+    // 定义事务标签, 用于描述事务
+	String[] label() default {};
+
+    // 事务传播属性, 默认REQUIRED
+	Propagation propagation() default Propagation.REQUIRED;
+
+    // 事务的隔离级别, 默认DEFAULT
+	Isolation isolation() default Isolation.DEFAULT;
+
+    // 事务超时时间(秒)
+	int timeout() default TransactionDefinition.TIMEOUT_DEFAULT;
+
+	String timeoutString() default "";
+
+    // 如果事务是只读的可以将该标志设置为true, 从而获得运行时优化
+    // 并不保证只读事务在进行写事务时会抛出异常.
+	boolean readOnly() default false;
+
+    // 定义异常回滚, 表示发生该异常进行回滚
+    // 默认情况下发生RuntimeException和Error时会进行回滚, 但是受检的异常不会回滚
+	Class<? extends Throwable>[] rollbackFor() default {};
+
+    // 异常回滚全限定类名
+	String[] rollbackForClassName() default {};
+
+    // 设置不回滚的异常, 如果异常同时存在于rollbackFor()中, 将会回滚异常.
+	Class<? extends Throwable>[] noRollbackFor() default {};
+
+    // 异常不会滚全限定类名
+	String[] noRollbackForClassName() default {};
+}
+
+```
 
 
 
