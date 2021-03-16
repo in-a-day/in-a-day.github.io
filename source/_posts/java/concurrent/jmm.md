@@ -151,6 +151,8 @@ public class Singleton {
     }
 }
 ```
+双重检查锁的第二个判断是否为空`instance == null`是因为多线程情况下, 如果A线程判断instance为空, 并获得了锁, 但A此时尚未进行instance的初始化, 此时调度B线程判断instance也为空, 紧接着线程调度A运行, 完成了instance的初始化, 接着调度B线程, 获得锁, 此时A已经完成了instance的初始化, 如果B线程不再进行一次`instance == null`的判断, 会重新初始化这个instance变量, 破坏了单例.
+
 以上代码在多线程情况下可能会导致错误. 线程可能获取值为`null`的`instance`, 这是由于`instance = new Singleton`语句可能会发生重排序.
 ```java
 instance = new Singleton();
