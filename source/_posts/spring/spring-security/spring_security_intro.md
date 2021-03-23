@@ -20,13 +20,19 @@ date: 2021-03-23 23:40:00
 Spring Security为认证客户提供了内置的支持. 
 TODO authentication for Servelt
 
-#### 密码存储
+#### 密码存储(Password Storage)
 ##### PasswordEncoder
 Spring Security的`PasswordEncoder`接口用于执行密码的单向转换(one way transformation), 使得密码可以安全存储. 给定的`PasswordEncoder`是进行单项转换, 当密码需要双向转换的时候(例如存储于向数据库进行身份验证的凭证, 当我们连接数据库是, 需要使用真实的密码传到数据库, 所以需要双向转换)就不需要使用它. 通常`PasswordEncoder`用于存储需要在身份验证时就与用户提供的密码进行比较的密码(可以在数据库中存储使用PasswordEncoder转换后的密码, 当用户需要验证密码时, 使用PasswordEncoder将用户提供的密码进行转换并与数据库中的密码进行比较, 这样数据库中就不会显示保存用户的密码).
 
-在Spring Security 5.0 之前`PasswordEncoder`默认使用`NoOpPasswordEncoder`(需要简单的文本密码).可能会有以下问题:
+##### 密码存储历史
+1. 直接存储明文密码, 使用SQL注入很容易导致密码泄露
+2. SHA-256, Rainbow Tables
+3. 加盐的SHA-256, 计算机计算效率大幅提升, 也不安全
+4. 现在推荐使用自适应单项函数来存储密码. 自适应单项函数有以下几个例子: bcrypt, PBKDF2, scrypt, and argon2.
+
+在Spring Security 5.0 之前`PasswordEncoder`默认使用`NoOpPasswordEncoder`(需要简单的文本密码).由于密码存储历史, 你可能希望当前的默认`PasswordEncoder`是`BCryptPasswordEncoder`, 但是这样可能导致以下问题:
 - 有许多应用程序使用无法轻易迁移的旧密码编码
-- 密码存储(编码方式)的最佳实践会再次改变
+- 密码存储的最佳实践会再次改变
 - 作为一个框架, Spring Security不能频繁进行破坏性的更改
 
 Spring Security引进了`DelegatingPasswordEncode`解决以下问题:
