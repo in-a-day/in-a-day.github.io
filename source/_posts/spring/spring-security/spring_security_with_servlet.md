@@ -1,5 +1,5 @@
 ---
-title: Spring Security在Servlet中的使用
+title: Spring Security Filter使用(5.4.5)
 tags:
   - java
   - spring
@@ -8,6 +8,14 @@ categories: spring
 date: 2021-03-24 15:10:00
 ---
 > Spring Security通过使用标准的Servlet`Filter`整合了Servlet容器. 这也就意味着它可以运行在任意的Servlet容器中. 更具体的来说, 不必在基于Servlet的应用中使用Spring就可以使用Spring Security.
+
+以下将介绍这些内容:
+- Filter, Servlet中的Filter及FilterChain
+- DelegatingFilterChainProxy
+- FilterChainProxy
+- SecurityFilterChain
+- Security Filters
+
 
 ### Filter概览
 Spring Security基于Servlet的`Filter`, 下面看一下一个典型的单个HTTP请求的处理层级.
@@ -61,8 +69,105 @@ Spring Security的Servlet支持包含于`FilterChainProxy`. `FilterChainProxy`�
 
 实际上, `FilterChainProxy`可以用于决定执行哪一个`SecurityFilterChain`.
 ![Multiple SecurityFilterChain](https://cdn.jsdelivr.net/gh/in-a-day/cdn@main/images/java/spring/spring-security/securityfilterchain.png)_Multiple SecurityFilterChain_
+上图中, `FilterChainProxy`决定了哪一个`SecurityFilterChain`该被使用. 只有第一个匹配的`SecurityFilterChain`才会被调用. 如果请求`/api/messages`URL, 那么SecurityFilterChain<sub>0</sub>将会匹配(由于其模式是`/api/**`), 所以只有SecurityFilterChain<sub>0</sub>会被调用. 如果请求的URL是`/message/`, 那么SecurityFilterChain<sub>0</sub>不会匹配, 所以`FilterChainProxy`会继续尝试调用每个`SecurityFilterChain`. 如果没有其他的`SecurityFilterChain`匹配, 最后匹配的SecurityFilterChain<sub>n</sub>将会被调用.
+
+**NB:每个`SecurityFilterChain`都可以是唯一的, 并且可以单配置.** 事实上, 一个`SecurityFilterChain`可能有0个security `Filter`(如果应用希望Spring Security忽略特定的请求).
 
 
+## **Security Filters**
+Security Filters通过SecurityFilterChain API插入FilterChainProxy. Filters的顺序十分重要. 通常没有必要去了解Spring Security Filters的顺序. 然而有时候还是有必要去知道这些顺序的. 以下是完成的Spring Security Filter 排序:
+``` text
+ChannelProcessingFilter
 
+WebAsyncManagerIntegrationFilter
 
+SecurityContextPersistenceFilter
+
+HeaderWriterFilter
+
+CorsFilter
+
+CsrfFilter
+
+LogoutFilter
+
+OAuth2AuthorizationRequestRedirectFilter
+
+Saml2WebSsoAuthenticationRequestFilter
+
+X509AuthenticationFilter
+
+AbstractPreAuthenticatedProcessingFilter
+
+CasAuthenticationFilter
+
+OAuth2LoginAuthenticationFilter
+
+Saml2WebSsoAuthenticationFilter
+
+UsernamePasswordAuthenticationFilter
+
+OpenIDAuthenticationFilter
+
+DefaultLoginPageGeneratingFilter
+
+DefaultLogoutPageGeneratingFilter
+
+ConcurrentSessionFilter
+
+DigestAuthenticationFilter
+
+BearerTokenAuthenticationFilter
+
+BasicAuthenticationFilter
+
+RequestCacheAwareFilter
+
+SecurityContextHolderAwareRequestFilter
+
+JaasApiIntegrationFilter
+
+RememberMeAuthenticationFilter
+
+AnonymousAuthenticationFilter
+
+OAuth2AuthorizationCodeGrantFilter
+
+SessionManagementFilter
+
+ExceptionTranslationFilter
+
+FilterSecurityInterceptor
+
+SwitchUserFilter
+```
+
+## **处理Security异常**
+`ExceptionTranslationFilter`允许将`AccessDeniedException`和`AuthenticalException`转换为Http 响应. `ExceptionTranslationFilter`作为`SecurityFilters`之一被插入到`FilterChainProxy`中.
+
+![ExceptionTranslationFilter](https://cdn.jsdelivr.net/gh/in-a-day/cdn@main/images/java/spring/spring-security/exceptiontranslationfilter.png)_ExceptionTranslationFilter_
+- 首先, `ExceptionTranslationFilter`调用`FilterChain.doFilter(request, response)`去调用应用的剩余部分.
+- 如果用户未认证或抛出AuthenticationException异常, 开始进行认证:
+    - 清空`SecurityContextHolder`
+    - 将`HttpServletRequest`保存到`RequestCache`中. 当用户成功认证后, 将`RequestCache`内容重播原始request.
+    - `AuthenticationEntryPoint`用于从客户端请求凭证(credential). 例如, 它可能重定向到登录页面或者发送一个`WWW-Authenticat`头部(header).
+- 否则, 如果产生`AccessDeniedException`, 那么拒绝访问. 调用`AccessHandler`处理决绝访问.
+
+**NB: 如果应用不抛出`AccessDeniedException`或`AuthenticationException`异常, 那么`ExceptionTranslationFilter`什么都不会做.** 
+
+上述`ExceptionTranslationFilter`伪代码如下:
+```java
+try {
+    filterChain.doFilter(request, response);  // 1
+} catch (AccessDeniedException | AuthenticationException ex) {
+    if (!authentication || ex instanceof AuthenticationException) {
+        startAuthentication();  // 2
+    } else {
+        accessDenied();  // 3
+    }
+}
+```
+- 1: 意味着如果应用的其他部分抛出了`AccessDeniedException`或`AuthenticationException`异常, 将在此处捕获
+- 2: 如果用户尚未认证, 或者抛出的是AuthenticationException, 那么开始认证.
+- 3: 其他情况, 拒绝访问.
 
