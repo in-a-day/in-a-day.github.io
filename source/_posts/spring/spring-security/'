@@ -375,20 +375,7 @@ public interface AuthenticationManager {
 ```
 
 ## **ProviderManager**
-`ProviderManager`是`AuthenticationManager`的一个最常用的实现. `ProviderManager`委托给`AuthenticationProvider`列表进行认证. 每个AuthenticationProvider都有机会指示身份验证应该是成功的、失败的，或者指示它不能做出决定，并允许下游的AuthenticationProvider做出决定.如果配置的authenticationprovider中没有一个可以进行身份验证，那么身份验证将抛出ProviderNotFoundException异常，这是一个特殊的AuthenticationException，它指示ProviderManager不支持传入的`Authentication`类型.
+`ProviderManager`是`AuthenticationManager`的一个最常用的实现. `ProviderManager`委托给`AuthenticationProvider`列表进行认证.
 
-![ProviderManager](https://cdn.jsdelivr.net/gh/in-a-day/cdn@main/images/java/spring/spring-security/providermanager.png)_ProviderManager_
-
-实际上，每个AuthenticationProvider都知道如何执行特定类型的身份验证. 例如，一个`AuthenticationProvider`可能能够验证用户名/密码，而另一个可能能够验证SAML断言。 这允许每个AuthenticationProvider执行非常特定类型的身份验证，同时支持多种身份验证类型，并且只暴露出单个AuthenticationManager bean。
-
-ProviderManager还允许配置一个可选的父AuthenticationManager，当AuthenticationProvider无法执行身份验证时，该父AuthenticationManager会被使用.父类可以是任何类型的AuthenticationManager，但它通常是ProviderManager的一个实例.
-
-![ParentProviderManager](https://cdn.jsdelivr.net/gh/in-a-day/cdn@main/images/java/spring/spring-security/providermanager-parent.png)_ParentProviderManager_
-
-事实上，多个ProviderManager实例可能共享相同的父AuthenticationManager。这在多个SecurityFilterChain实例中比较常见，这些实例有一些共同的身份验证(共享的父AuthenticationManager)，但也有不同的身份验证机制(不同的ProviderManager实例)。
-
-![ShareParentProviderManager](https://cdn.jsdelivr.net/gh/in-a-day/cdn@main/images/java/spring/spring-security/providermanagers-parent.png)_ShareParentProviderManager_
-
-默认情况下，ProviderManager将尝试从成功的身份验证请求返回的身份验证对象中清除任何敏感的凭据信息。这可以防止诸如密码之类的信息在HttpSession中被保留的时间超过必要的时间。
 
 
