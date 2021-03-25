@@ -68,7 +68,7 @@ Spring Security的Servlet支持包含于`FilterChainProxy`. `FilterChainProxy`�
 - 此外, 它提供了更为灵活的方式决定一个`SecurityFilterChain`是否应该被调用. 在Servlet容器中, `Fitler`是基于URL调用的. 然而`FilterChainProxy`可以通过利用`RequestMathcer`接口, 基于`HttpServletRequest`中任何信息决定调用.
 
 实际上, `FilterChainProxy`可以用于决定执行哪一个`SecurityFilterChain`.
-![Multiple SecurityFilterChain](https://cdn.jsdelivr.net/gh/in-a-day/cdn@main/images/java/spring/spring-security/securityfilterchain.png)_Multiple SecurityFilterChain_
+![Multiple SecurityFilterChain](https://cdn.jsdelivr.net/gh/in-a-day/cdn@main/images/java/spring/spring-security/multi-securityfilterchain.png)_Multiple SecurityFilterChain_
 上图中, `FilterChainProxy`决定了哪一个`SecurityFilterChain`该被使用. 只有第一个匹配的`SecurityFilterChain`才会被调用. 如果请求`/api/messages`URL, 那么SecurityFilterChain<sub>0</sub>将会匹配(由于其模式是`/api/**`), 所以只有SecurityFilterChain<sub>0</sub>会被调用. 如果请求的URL是`/message/`, 那么SecurityFilterChain<sub>0</sub>不会匹配, 所以`FilterChainProxy`会继续尝试调用每个`SecurityFilterChain`. 如果没有其他的`SecurityFilterChain`匹配, 最后匹配的SecurityFilterChain<sub>n</sub>将会被调用.
 
 **NB:每个`SecurityFilterChain`都可以是唯一的, 并且可以单配置.** 事实上, 一个`SecurityFilterChain`可能有0个security `Filter`(如果应用希望Spring Security忽略特定的请求).
