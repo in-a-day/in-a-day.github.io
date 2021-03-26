@@ -32,7 +32,7 @@ Spring Security为认证提供了全面的支持. 接下来从这两个方面进
 
 ## **SecurityContextHolder**
 `SecurityContextHolder`是Spring Security认证模型的核心. 它包含了`SecurityContext`.
-![SecurityContextHolder](https://cdn.jsdelivr.net/gh/in-a-day/cdn@main/images/java/spring/spring-security/filterchain.png)_SecurityContextHolder_
+![SecurityContextHolder](https://cdn.jsdelivr.net/gh/in-a-day/cdn@main/images/java/spring/spring-security/securitycontextholder.png)_SecurityContextHolder_
 上图可以看出, `SecurityContextHolder`中包含了`SecurityContext`, `SecurityContext`中包含了`Authentication`, `Authentication`中包含了`Principal, Credentials, Authorities`.
 
 `SecurityContextHolder`存储了身份认证的详细信息. Spring Security不关心`SecurityContextHolder`是如何填充的. 如果他包含了值, 就将它当做当前认证的用户.
@@ -87,6 +87,7 @@ public class SecurityContextHolder {
 		initialize();
 	}
 
+	// 初始化strategy
 	private static void initialize() {
 		if (!StringUtils.hasText(strategyName)) {
 			// Set default
@@ -115,62 +116,31 @@ public class SecurityContextHolder {
 		initializeCount++;
 	}
 
-	/**
-	 * Explicitly clears the context value from the current thread.
-	 */
 	public static void clearContext() {
 		strategy.clearContext();
 	}
 
-	/**
-	 * Obtain the current <code>SecurityContext</code>.
-	 * @return the security context (never <code>null</code>)
-	 */
 	public static SecurityContext getContext() {
 		return strategy.getContext();
 	}
 
-	/**
-	 * Primarily for troubleshooting purposes, this method shows how many times the class
-	 * has re-initialized its <code>SecurityContextHolderStrategy</code>.
-	 * @return the count (should be one unless you've called
-	 * {@link #setStrategyName(String)} to switch to an alternate strategy.
-	 */
 	public static int getInitializeCount() {
 		return initializeCount;
 	}
 
-	/**
-	 * Associates a new <code>SecurityContext</code> with the current thread of execution.
-	 * @param context the new <code>SecurityContext</code> (may not be <code>null</code>)
-	 */
 	public static void setContext(SecurityContext context) {
 		strategy.setContext(context);
 	}
 
-	/**
-	 * Changes the preferred strategy. Do <em>NOT</em> call this method more than once for
-	 * a given JVM, as it will re-initialize the strategy and adversely affect any
-	 * existing threads using the old strategy.
-	 * @param strategyName the fully qualified class name of the strategy that should be
-	 * used.
-	 */
 	public static void setStrategyName(String strategyName) {
 		SecurityContextHolder.strategyName = strategyName;
 		initialize();
 	}
 
-	/**
-	 * Allows retrieval of the context strategy. See SEC-1188.
-	 * @return the configured strategy for storing the security context.
-	 */
 	public static SecurityContextHolderStrategy getContextHolderStrategy() {
 		return strategy;
 	}
 
-	/**
-	 * Delegates the creation of a new, empty context to the configured strategy.
-	 */
 	public static SecurityContext createEmptyContext() {
 		return strategy.createEmptyContext();
 	}
@@ -182,6 +152,59 @@ public class SecurityContextHolder {
 
 }
 ```
+从源码中可以看出, `SercurityContextHolder`内部使用`SecurityContextHolderStrategy`执行具体的逻辑. 接下来看一下`SecurityContextHolderStrategy`源码:
+```java
+public interface SecurityContextHolderStrategy {
+	// 清空当前context
+	void clearContext();
+
+	// 获取当前context
+	SecurityContext getContext();
+	
+	// 设置当前context
+	void setContext(SecurityContext context);
+		
+	// 创建新的空的context实现
+	SecurityContext createEmptyContext();
+}
+```
+接下来看一下常用的一个实现`ThreadLocalSecurityContextHolderStrategy`:
+```java
+final class ThreadLocalSecurityContextHolderStrategy implements
+		SecurityContextHolderStrategy {
+
+	// 使用ThreadLocal保存SecurityContext
+	private static final ThreadLocal<SecurityContext> contextHolder = new ThreadLocal<>();
+
+	// ~ Methods
+	// ========================================================================================================
+
+	public void clearContext() {
+		contextHolder.remove();
+	}
+
+	public SecurityContext getContext() {
+		SecurityContext ctx = contextHolder.get();
+
+		if (ctx == null) {
+			ctx = createEmptyContext();
+			contextHolder.set(ctx);
+		}
+
+		return ctx;
+	}
+
+	public void setContext(SecurityContext context) {
+		Assert.notNull(context, "Only non-null SecurityContext instances are permitted");
+		contextHolder.set(context);
+	}
+
+	public SecurityContext createEmptyContext() {
+		return new SecurityContextImpl();
+	}
+}
+```
+
 
 ## **SecurityContext**
 > `SecurityContext`可以从`SecurityContextHolder`中获得. 其包含了一个`Authenticaiton`对象.
@@ -190,19 +213,8 @@ public class SecurityContextHolder {
 ```java
 public interface SecurityContext extends Serializable {
 
-	/**
-	 * Obtains the currently authenticated principal, or an authentication request token.
-	 * @return the <code>Authentication</code> or <code>null</code> if no authentication
-	 * information is available
-	 */
 	Authentication getAuthentication();
 
-	/**
-	 * Changes the currently authenticated principal, or removes the authentication
-	 * information.
-	 * @param authentication the new <code>Authentication</code> token, or
-	 * <code>null</code> if no further authentication information should be stored
-	 */
 	void setAuthentication(Authentication authentication);
 
 }
@@ -210,7 +222,7 @@ public interface SecurityContext extends Serializable {
 
 ## **Authentication**
 `Authentication`在Spring Security中主要有以下两个目的:
-- 作为`AuthenticationManager`的输出, 提供用户提供的身份认证凭据. 这种情况下, `isAuthenticated()`将返回`false`.
+- 作为`AuthenticationManager`的输入, 提供用户提供的身份认证凭据. 这种情况下, `isAuthenticated()`将返回`false`.
 - 表示当前认证的用户. 可以从`SecurityContext`中获取当前的`Authentication`.
 
 `Authentication`主要包含以下属性:
@@ -222,86 +234,16 @@ public interface SecurityContext extends Serializable {
 ```java
 public interface Authentication extends Principal, Serializable {
 
-	/**
-	 * Set by an <code>AuthenticationManager</code> to indicate the authorities that the
-	 * principal has been granted. Note that classes should not rely on this value as
-	 * being valid unless it has been set by a trusted <code>AuthenticationManager</code>.
-	 * <p>
-	 * Implementations should ensure that modifications to the returned collection array
-	 * do not affect the state of the Authentication object, or use an unmodifiable
-	 * instance.
-	 * </p>
-	 * @return the authorities granted to the principal, or an empty collection if the
-	 * token has not been authenticated. Never null.
-	 */
 	Collection<? extends GrantedAuthority> getAuthorities();
 
-	/**
-	 * The credentials that prove the principal is correct. This is usually a password,
-	 * but could be anything relevant to the <code>AuthenticationManager</code>. Callers
-	 * are expected to populate the credentials.
-	 * @return the credentials that prove the identity of the <code>Principal</code>
-	 */
 	Object getCredentials();
 
-	/**
-	 * Stores additional details about the authentication request. These might be an IP
-	 * address, certificate serial number etc.
-	 * @return additional details about the authentication request, or <code>null</code>
-	 * if not used
-	 */
 	Object getDetails();
 
-	/**
-	 * The identity of the principal being authenticated. In the case of an authentication
-	 * request with username and password, this would be the username. Callers are
-	 * expected to populate the principal for an authentication request.
-	 * <p>
-	 * The <tt>AuthenticationManager</tt> implementation will often return an
-	 * <tt>Authentication</tt> containing richer information as the principal for use by
-	 * the application. Many of the authentication providers will create a
-	 * {@code UserDetails} object as the principal.
-	 * @return the <code>Principal</code> being authenticated or the authenticated
-	 * principal after authentication.
-	 */
 	Object getPrincipal();
 
-	/**
-	 * Used to indicate to {@code AbstractSecurityInterceptor} whether it should present
-	 * the authentication token to the <code>AuthenticationManager</code>. Typically an
-	 * <code>AuthenticationManager</code> (or, more often, one of its
-	 * <code>AuthenticationProvider</code>s) will return an immutable authentication token
-	 * after successful authentication, in which case that token can safely return
-	 * <code>true</code> to this method. Returning <code>true</code> will improve
-	 * performance, as calling the <code>AuthenticationManager</code> for every request
-	 * will no longer be necessary.
-	 * <p>
-	 * For security reasons, implementations of this interface should be very careful
-	 * about returning <code>true</code> from this method unless they are either
-	 * immutable, or have some way of ensuring the properties have not been changed since
-	 * original creation.
-	 * @return true if the token has been authenticated and the
-	 * <code>AbstractSecurityInterceptor</code> does not need to present the token to the
-	 * <code>AuthenticationManager</code> again for re-authentication.
-	 */
 	boolean isAuthenticated();
 
-	/**
-	 * See {@link #isAuthenticated()} for a full description.
-	 * <p>
-	 * Implementations should <b>always</b> allow this method to be called with a
-	 * <code>false</code> parameter, as this is used by various classes to specify the
-	 * authentication token should not be trusted. If an implementation wishes to reject
-	 * an invocation with a <code>true</code> parameter (which would indicate the
-	 * authentication token is trusted - a potential security risk) the implementation
-	 * should throw an {@link IllegalArgumentException}.
-	 * @param isAuthenticated <code>true</code> if the token should be trusted (which may
-	 * result in an exception) or <code>false</code> if the token should not be trusted
-	 * @throws IllegalArgumentException if an attempt to make the authentication token
-	 * trusted (by passing <code>true</code> as the argument) is rejected due to the
-	 * implementation being immutable or implementing its own alternative approach to
-	 * {@link #isAuthenticated()}
-	 */
 	void setAuthenticated(boolean isAuthenticated) throws IllegalArgumentException;
 
 }
@@ -310,27 +252,12 @@ public interface Authentication extends Principal, Serializable {
 ## **GrantedAuthority**
 `GrantedAuthority`是用户被授予的高级权限. 例如roles或scopes.
 
-通过`Authentication.getAuthorities()`可以获得`GrantedAuthority`集合. `GrantedAuthority`就是授予用户的权限. 通常称这些权限为角色, 例如`ROLE_ADMINISTRATOR, ROLE_HR_SUPERVISOR`. 这些角色可以用于配置web授权, 方法授权和domain对象授权. 使用用户名/密码方式认证的`GrantedAuthority`通常由`UserDetaiLService`加载. 
+通过`Authentication.getAuthorities()`可以获得`GrantedAuthority`集合. `GrantedAuthority`就是授予用户的权限. 通常称这些权限为角色, 例如`ROLE_ADMINISTRATOR, ROLE_HR_SUPERVISOR`. 这些角色可以用于配置web授权, 方法授权和domain对象授权. 使用用户名/密码方式认证的`GrantedAuthority`通常由`UserDetailService`加载. 
 
 源码如下:
 ```java
 public interface GrantedAuthority extends Serializable {
 
-	/**
-	 * If the <code>GrantedAuthority</code> can be represented as a <code>String</code>
-	 * and that <code>String</code> is sufficient in precision to be relied upon for an
-	 * access control decision by an {@link AccessDecisionManager} (or delegate), this
-	 * method should return such a <code>String</code>.
-	 * <p>
-	 * If the <code>GrantedAuthority</code> cannot be expressed with sufficient precision
-	 * as a <code>String</code>, <code>null</code> should be returned. Returning
-	 * <code>null</code> will require an <code>AccessDecisionManager</code> (or delegate)
-	 * to specifically support the <code>GrantedAuthority</code> implementation, so
-	 * returning <code>null</code> should be avoided nless actually required.
-	 * @return a representation of the granted authority (or <code>null</code> if the
-	 * granted authority cannot be expressed as a <code>String</code> with sufficient
-	 * precision).
-	 */
 	String getAuthority();
 
 }
@@ -345,30 +272,6 @@ public interface GrantedAuthority extends Serializable {
 ```java
 public interface AuthenticationManager {
 
-	/**
-	 * Attempts to authenticate the passed {@link Authentication} object, returning a
-	 * fully populated <code>Authentication</code> object (including granted authorities)
-	 * if successful.
-	 * <p>
-	 * An <code>AuthenticationManager</code> must honour the following contract concerning
-	 * exceptions:
-	 * <ul>
-	 * <li>A {@link DisabledException} must be thrown if an account is disabled and the
-	 * <code>AuthenticationManager</code> can test for this state.</li>
-	 * <li>A {@link LockedException} must be thrown if an account is locked and the
-	 * <code>AuthenticationManager</code> can test for account locking.</li>
-	 * <li>A {@link BadCredentialsException} must be thrown if incorrect credentials are
-	 * presented. Whilst the above exceptions are optional, an
-	 * <code>AuthenticationManager</code> must <B>always</B> test credentials.</li>
-	 * </ul>
-	 * Exceptions should be tested for and if applicable thrown in the order expressed
-	 * above (i.e. if an account is disabled or locked, the authentication request is
-	 * immediately rejected and the credentials testing process is not performed). This
-	 * prevents credentials being tested against disabled or locked accounts.
-	 * @param authentication the authentication request object
-	 * @return a fully authenticated object including credentials
-	 * @throws AuthenticationException if authentication fails
-	 */
 	Authentication authenticate(Authentication authentication) throws AuthenticationException;
 
 }
@@ -390,5 +293,35 @@ ProviderManager还允许配置一个可选的父AuthenticationManager，当Authe
 ![ShareParentProviderManager](https://cdn.jsdelivr.net/gh/in-a-day/cdn@main/images/java/spring/spring-security/providermanagers-parent.png)_ShareParentProviderManager_
 
 默认情况下，ProviderManager将尝试从成功的身份验证请求返回的身份验证对象中清除任何敏感的凭据信息。这可以防止诸如密码之类的信息在HttpSession中被保留的时间超过必要的时间。
+
+## **AuthenticationProvider**
+`ProviderManager`可以注入多个`AuthenticationProvider`. 每个`AuthenticationProvider`执行特定类型的认证. 例如`DaoAuthenticationProvider`支持基于用户名/密码的认证, `JwtAuthenticationProvider`支持使用JWT token认证.
+
+## **使用AuthenticationEntryPoint请求凭证**
+`AuthenticationEntryPoint`用于发送从客户端请求凭证的HTTP响应.
+
+有时客户端会主动携带凭证(例如用户名/密码)去请求资源. 在这种情况下, Spring Security不需要再向客户端发送请求凭证的HTTP响应.
+
+其他情况下, 客户端可能会发送一个未经认证的获取资源请求. 在这种情况下, 使用`AuthenticationEntryPoint`向客户端请求凭证. `AuthenticationEntryPoint`可能会重定向到登录页面, 使用`WWW-Authenticate`头部响应.
+
+## **AbstractAuthenticationProcessingFilter**
+`AbstractAuthenticationProcessingFilter`作为基础的Filter对用户的凭证进行验证. 在验证凭证之前, Spring Security通常会使用`AuthenticationEntryPoint`请求凭证.
+
+然后, `AbstractAuthenticationProcessingFilter`可以验证任何提交给他的身份认证请求.
+
+![AbstractAuthenticationProcessingFilter](https://cdn.jsdelivr.net/gh/in-a-day/cdn@main/images/java/spring/spring-security/abstractauthenticationprocessingfilter.png)_AbstractAuthenticationProcessingFilter_
+- 1-当用户提交他们的凭证后, `AbstractAuthenticationProcessingFilter`从`HttpServletRequest`中创建一个待验证的`Authentication`. 创建的`Authentication`的类型取决于`AbstractAuthenticationProcessingFilter`子类. 例如`UsernamePasswordAuthenticationFitler`根据`HttpServletRequest`中提交的username和password创建一个`UsernamePasswordAuthenticationToken`.
+- 2-将创建的`Authentication`传递给`AuthenticationManager`进行验证. 
+- 3-如果验证失败, 执行以下操作:
+	- 清空`SecurityContextHolder`
+	- 调用`RememberMeService.loginFail`. 如果未配置remember me, 不执行任何操作.
+	- 调用`AuthenticationFailureHandler`.
+- 4-如果验证成功, 执行以下操作:
+	- `SessionAuthenticationStrategy`收到新的登录通知(用于缓存?).
+	- 在`SecurityContextHolder`中设置`Authentication`. 之后使用`SecurityContextPersistenceFilter`将`SecurityContex`保存到HttpSession中.
+	- 调用`RememberMeService.loginSuccess`. 如果未配置remember me, 不执行任何操作.
+	- 通过`ApplicationEventPublisher`发布一个`InteractiveAuthenticationSuccessEvent`.
+	- 调用`AuthenticationSuccessHandler`.
+
 
 
