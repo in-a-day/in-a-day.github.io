@@ -235,15 +235,15 @@ public interface SecurityContext extends Serializable {
 public interface Authentication extends Principal, Serializable {
 
 	Collection<? extends GrantedAuthority> getAuthorities();
-
+	// 获取凭证
 	Object getCredentials();
-
+	// 获取认证请求详细信息, 可能是ip地址, 证书编号等
 	Object getDetails();
-
+	// 获取主体信息, 通常会是UserDetails
 	Object getPrincipal();
-
+	// 是否验证成功
 	boolean isAuthenticated();
-
+	
 	void setAuthenticated(boolean isAuthenticated) throws IllegalArgumentException;
 
 }
@@ -294,8 +294,124 @@ ProviderManager还允许配置一个可选的父AuthenticationManager，当Authe
 
 默认情况下，ProviderManager将尝试从成功的身份验证请求返回的身份验证对象中清除任何敏感的凭据信息。这可以防止诸如密码之类的信息在HttpSession中被保留的时间超过必要的时间。
 
+下面看一下ProviderManager的构造方法:
+
+```java
+	public ProviderManager(AuthenticationProvider... providers) {
+		this(Arrays.asList(providers), null);
+	}
+
+	/**
+	 * Construct a {@link ProviderManager} using the given {@link AuthenticationProvider}s
+	 * @param providers the {@link AuthenticationProvider}s to use
+	 */
+	public ProviderManager(List<AuthenticationProvider> providers) {
+		this(providers, null);
+	}
+
+	/**
+	 * Construct a {@link ProviderManager} using the provided parameters
+	 * @param providers the {@link AuthenticationProvider}s to use
+	 * @param parent a parent {@link AuthenticationManager} to fall back to
+	 */
+	public ProviderManager(List<AuthenticationProvider> providers, AuthenticationManager parent) {
+		Assert.notNull(providers, "providers list cannot be null");
+		this.providers = providers;
+		this.parent = parent;
+		checkState();
+	}
+```
+
+不难看出, ProviderManager可以接受一系列的AuthenticationProvider.
+
+接着看一下ProviderManager是如何具体实现Authentication的authenticate方法(只截取部分):
+
+```java
+// 循环每个provider	
+for (AuthenticationProvider provider : getProviders()) {
+  // 先调用support方法测试该provider是否支持验证toTest
+  if (!provider.supports(toTest)) {
+    continue;
+  }
+
+  // ... 省略一些内容
+
+  try {
+    // 调用provider执行验证, 只要有一个验证通过了就返回
+    result = provider.authenticate(authentication);
+    if (result != null) {
+      copyDetails(authentication, result);
+      break;
+    }
+  }
+  catch (AccountStatusException | InternalAuthenticationServiceException ex) {
+    prepareException(ex, authentication);
+    throw ex;
+  }
+  catch (AuthenticationException ex) {
+    lastException = ex;
+  }
+}
+// 如果结果为空, 且存在父AuthenticationManager, 使用父AuthenticationManager执行验证
+if (result == null && this.parent != null) {
+  try {
+    parentResult = this.parent.authenticate(authentication);
+    result = parentResult;
+  }
+  catch (ProviderNotFoundException ex) {
+  }
+  catch (AuthenticationException ex) {
+    parentException = ex;
+    lastException = ex;
+  }
+}
+ 
+// 验证成功, 清除敏感信息, 例如密码等
+if (result != null) {
+  if (this.eraseCredentialsAfterAuthentication && (result instanceof CredentialsContainer)) {
+    ((CredentialsContainer) result).eraseCredentials();
+  }
+	// ...省略一些代码
+  return result;
+}
+
+// Parent was null, or didn't authenticate (or throw an exception).
+if (lastException == null) {
+  lastException = new ProviderNotFoundException(this.messages.getMessage("ProviderManager.providerNotFound",
+                                                                         new Object[] { toTest.getName() }, "No AuthenticationProvider found for {0}"));
+}
+// ... 省略一些代码
+// 如果验证未通过, 最后抛出异常
+throw lastException;
+
+```
+
+
+
 ## **AuthenticationProvider**
 `ProviderManager`可以注入多个`AuthenticationProvider`. 每个`AuthenticationProvider`执行特定类型的认证. 例如`DaoAuthenticationProvider`支持基于用户名/密码的认证, `JwtAuthenticationProvider`支持使用JWT token认证.
+
+`AuthenticationProvider`接口定义了两个方法:
+
+```java
+public interface AuthenticationProvider {
+  // 验证身份, 如果不支持该authentication类型验证, 则可以返回nullm, 如果验证失败抛出异常
+	Authentication authenticate(Authentication authentication) throws AuthenticationException;
+	// 测试该provider是否支持验证给定的authentication
+	boolean supports(Class<?> authentication);
+}
+
+```
+
+下面看一下常用的`AbstractUserDetailsAuthenticationProvider`(`DaoAuthenticationProvider`就继承自该provider)的authenticate流程:
+
+```java
+
+```
+
+
+
+
 
 ## **使用AuthenticationEntryPoint请求凭证**
 `AuthenticationEntryPoint`用于发送从客户端请求凭证的HTTP响应.
