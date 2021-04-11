@@ -1,3 +1,11 @@
+---
+title: redis安装
+tags:
+  - redis
+categories: redis
+date: 2021-04-11 11:44:00
+---
+
 本文基于centos7
 
 ```bash

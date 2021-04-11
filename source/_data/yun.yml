@@ -45,6 +45,10 @@ social:
     icon: icon-github-line
     color: "#6e5494"
 
+post_edit:
+  enable: true
+  url: https://github.com/in-a-day/in-a-day.github.io/tree/hexo/source/
+
 codeblock:
   copy_btn: true
   prismjs:

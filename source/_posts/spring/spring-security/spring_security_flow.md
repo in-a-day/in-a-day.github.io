@@ -1,3 +1,12 @@
+---
+title: Spring Security认证流程
+tags:
+  - java
+  - spring
+  - spring security
+categories: spring
+date: 2021-04-11 11:47:00
+---
 ## Spring Security 流程
 
 1. 首先Spring Security是通过一个filter进行拦截的, 起始Spring Security内部也会有FilterChain, 但是只暴露出了DelegatingFilterProxy(代理类)去执行
