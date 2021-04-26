@@ -1,5 +1,5 @@
 ---
-title: Java内存区域
+title: 类加载机制
 tags:
   - java
   - jvm
