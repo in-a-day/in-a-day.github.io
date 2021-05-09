@@ -1,25 +1,24 @@
 ---
-title: JWT: Json Web Token
-tags:
-  - java
-  - spring
-  - spring security
+title: JWT-Json Web Token
+tags: 
+	- spring security 
+	- jwt
 categories: spring
-date: 2021-03-24 23:08:00
+date: 2021-04-24 23:08:00
 ---
 
-## JWT: Json Web Token
+## **JWT: Json Web Token**
 
 > JWT 定义了紧凑且自包含的方式在实体间进行安全信息传输. JWT使用数字签名来保证传输的信息可以被验证并且保证其可信. JWT可以使用私钥(HMAC算法)进行签名, 或者使用RSA/ECDSA的公私钥进行签名.
 
-### JWT使用场景
+### **JWT使用场景**
 
 - 授权(Authorization): 这是JWT最常用的场景. 使用JWT可以替代常用的cookie-session模式.
 - 信息交换: 在实体间进行安全的传输信息
 
-### JWT结构
+### **JWT结构**
 
-在JWT的紧凑形式中, JWT有三部分组成, 且每个部分之间使用`.`分隔. 以下是三个部分:
+在JWT的紧凑形式中, JWT由三部分组成, 且每个部分之间使用`.`分隔. 以下是三个部分:
 
 - Header
 - Payload
@@ -27,7 +26,7 @@ date: 2021-03-24 23:08:00
 
 JWT通常是以下的形式: `xxxxx.yyyyy.zzzzz`
 
-#### Header
+#### **Header**
 
 JWT第一部分是header, header通常由两部分组成:
 
@@ -45,7 +44,7 @@ JWT第一部分是header, header通常由两部分组成:
 
 接着使用Base64Url编码上述的json作为JWT的第一部分.
 
-#### Payload
+#### **Payload**
 
 JWT的第二部分是payload, payload中包含了claims. claims通常是一些实体(通常是用户)和其他数据的声明. claims有三种类型: registered, public, private.
 
@@ -67,7 +66,7 @@ payload的一个例子:
 
 **NB: 尽管JWT可以通过签名防止篡改, 但是payload对任何人来说都是可读的(因为只是使用了Base64Url进行编码). 如果需要存放敏感信息, 则可以先对信息加密, 再放入payload中.**
 
-#### Signature
+#### **Signature**
 
 JWT的第三部分是signature. 在创建signature之前, 必须确保存在编码后的header, 编码后的payload, secret(加密的key), 然后使用在header中指定的加密算法进行签名. 
 
@@ -85,11 +84,13 @@ signature用于保证消息在传输过程中没有被更改.
 
 
 
-### Java JJwt使用
+### **Java JJwt使用**
 
 
 
+## 参考资料
 
+- JWT官网: https://jwt.io/introduction
 
->  参考JWT官网: https://jwt.io/introduction
+- JJwt: https://github.com/jwtk/jjwt
 
