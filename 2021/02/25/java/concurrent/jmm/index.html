@@ -1,0 +1,236 @@
+<!DOCTYPE html><html lang="zh-CN"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="theme-color" content="#0078E7"><meta name="author" content="z"><meta name="copyright" content="z"><meta name="generator" content="Hexo 5.4.0"><meta name="theme" content="hexo-theme-yun"><title>Java内存模型 | 日常</title><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@900&amp;display=swap" media="print" onload="this.media='all'"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/star-markdown-css@0.1.22/dist/yun/yun-markdown.min.css"><script src="//at.alicdn.com/t/font_1140697_ed8vp4atwoj.js" async></script><script src="https://cdn.jsdelivr.net/npm/scrollreveal/dist/scrollreveal.min.js" defer></script><script>document.addEventListener("DOMContentLoaded", () => {
+  [".post-card",".post-content img"].forEach((target)=> {
+    ScrollReveal().reveal(target);
+  })
+});
+</script><link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/katex@latest/dist/katex.min.css"><script defer src="https://cdn.jsdelivr.net/npm/katex@latest/dist/katex.min.js"></script><link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/katex@latest/dist/contrib/copy-tex.min.css"><script defer src="https://cdn.jsdelivr.net/npm/katex@latest/dist/contrib/copy-tex.min.js"></script><script defer src="https://cdn.jsdelivr.net/npm/katex@latest/dist/contrib/auto-render.min.js"></script><script>document.addEventListener("DOMContentLoaded", function() {
+  renderMathInElement(document.body, {
+    delimiters: [
+      {left: "$$", right: "$$", display: true},
+      {left: "$", right: "$", display: false},
+      {left: "\\(", right: "\\)", display: false},
+      {left: "\\[", right: "\\]", display: true}
+    ]
+  });
+});</script><link id="light-prism-css" rel="stylesheet" href="https://cdn.jsdelivr.net/npm/prismjs@1.20.0/themes/prism.css" media="(prefers-color-scheme: light)"><link id="dark-prism-css" rel="stylesheet" href="https://cdn.jsdelivr.net/npm/prismjs@1.20.0/themes/prism-tomorrow.css" media="(prefers-color-scheme: dark)"><link rel="shortcut icon" type="image/svg+xml" href="https://cdn.jsdelivr.net/gh/in-a-day/cdn@main/images/blog/favicon.ico"><link rel="mask-icon" href="https://cdn.jsdelivr.net/gh/in-a-day/cdn@main/images/blog/favicon.ico" color="#0078E7"><link rel="alternate icon" href="/yun.ico"><link rel="preload" href="/css/hexo-theme-yun.css" as="style"><link rel="preload" href="/js/utils.js" as="script"><link rel="preload" href="/js/hexo-theme-yun.js" as="script"><link rel="prefetch" href="/js/sidebar.js" as="script"><link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin><script id="yun-config">
+    const Yun = window.Yun || {};
+    window.CONFIG = {"hostname":"nichijou.cloud","root":"/","title":"日常","version":"1.4.0","mode":"light","copycode":true,"page":{"isPost":true},"anonymous_image":"https://cdn.jsdelivr.net/gh/YunYouJun/cdn/img/avatar/none.jpg","say":{"api":"/data/sentences.json"},"local_search":{"path":"/search.xml"}};
+  </script><link rel="stylesheet" href="/css/hexo-theme-yun.css"><script src="/js/utils.js"></script><script src="/js/hexo-theme-yun.js"></script><meta name="description" content="Java内存模型抽象运行时数据区java运行时数据区 对于每个线程来说, 栈是私有的, 堆是共有的. 栈中的变量不会共享, 不会受到内存模型的影响. 堆中的变量是共享的, 称之为共享变量. 缓存一致性尽管堆中的变量是共享的, 仍然会有内存不可见的问题. 现代计算机通常会在高速缓存区中缓存共享变量.  线程间共享变量存在于主存中, 每个线程都会有一个私有的工作内存, 存储了共享变量的副本. 工作内存">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Java内存模型">
+<meta property="og:url" content="http://nichijou.cloud/2021/02/25/java/concurrent/jmm/index.html">
+<meta property="og:site_name" content="日常">
+<meta property="og:description" content="Java内存模型抽象运行时数据区java运行时数据区 对于每个线程来说, 栈是私有的, 堆是共有的. 栈中的变量不会共享, 不会受到内存模型的影响. 堆中的变量是共享的, 称之为共享变量. 缓存一致性尽管堆中的变量是共享的, 仍然会有内存不可见的问题. 现代计算机通常会在高速缓存区中缓存共享变量.  线程间共享变量存在于主存中, 每个线程都会有一个私有的工作内存, 存储了共享变量的副本. 工作内存">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://cdn.jsdelivr.net/gh/in-a-day/cdn@main/images/java/concurrent/Java%E8%BF%90%E8%A1%8C%E6%97%B6%E6%95%B0%E6%8D%AE%E5%8C%BA.png">
+<meta property="og:image" content="https://cdn.jsdelivr.net/gh/in-a-day/cdn@main/images/java/concurrent/JMM%E6%8A%BD%E8%B1%A1%E7%A4%BA%E6%84%8F%E5%9B%BE.jpg">
+<meta property="og:image" content="https://cdn.jsdelivr.net/gh/in-a-day/cdn@main/images/java/concurrent/java%E5%86%85%E5%AD%98%E6%A8%A1%E5%9E%8B%E4%B8%8E%E7%A1%AC%E4%BB%B6%E5%85%B3%E7%B3%BB.jpg">
+<meta property="og:image" content="https://cdn.jsdelivr.net/gh/in-a-day/cdn@main/images/java/concurrent/java%E5%86%85%E5%AD%98%E6%A8%A1%E5%9E%8B2.png">
+<meta property="og:image" content="https://cdn.jsdelivr.net/gh/in-a-day/cdn@main/images/java/concurrent/jmm_volatile_monitor_rule.png">
+<meta property="og:image" content="https://cdn.jsdelivr.net/gh/in-a-day/cdn@main/images/java/concurrent/memory_barrier_rule_new.png">
+<meta property="article:published_time" content="2021-02-25T11:33:00.000Z">
+<meta property="article:modified_time" content="2021-06-03T09:28:35.714Z">
+<meta property="article:author" content="z">
+<meta property="article:tag" content="java">
+<meta property="article:tag" content="多线程">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://cdn.jsdelivr.net/gh/in-a-day/cdn@main/images/java/concurrent/Java%E8%BF%90%E8%A1%8C%E6%97%B6%E6%95%B0%E6%8D%AE%E5%8C%BA.png"></head><body><div class="container"><a class="sidebar-toggle hty-icon-button" id="menu-btn"><div class="hamburger hamburger--spin" type="button"><span class="hamburger-box"><span class="hamburger-inner"></span></span></div></a><div class="sidebar-toggle sidebar-overlay"></div><aside class="sidebar"><script src="/js/sidebar.js"></script><ul class="sidebar-nav"><li class="sidebar-nav-item sidebar-nav-toc hty-icon-button sidebar-nav-active" data-target="post-toc-wrap" title="文章目录"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-list-ordered"></use></svg></li><li class="sidebar-nav-item sidebar-nav-overview hty-icon-button" data-target="site-overview-wrap" title="站点概览"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-passport-line"></use></svg></li></ul><div class="sidebar-panel" id="site-overview-wrap"><div class="site-info fix-top"><a class="site-author-avatar" href="/about/" title="z"><img width="96" loading="lazy" src="https://cdn.jsdelivr.net/gh/in-a-day/cdn@main/images/blog/avatar.png" alt="z"></a><div class="site-author-name"><a href="/about/">z</a></div><a class="site-name" href="/about/site.html">日常</a><sub class="site-subtitle"></sub><div class="site-desciption"></div></div><nav class="site-state"><a class="site-state-item hty-icon-button icon-home" href="/" title="首页"><span class="site-state-item-icon"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-home-4-line"></use></svg></span></a><div class="site-state-item"><a href="/archives/" title="归档"><span class="site-state-item-icon"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-archive-line"></use></svg></span><span class="site-state-item-count">62</span></a></div><div class="site-state-item"><a href="/categories/" title="分类"><span class="site-state-item-icon"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-folder-2-line"></use></svg></span><span class="site-state-item-count">11</span></a></div><div class="site-state-item"><a href="/tags/" title="标签"><span class="site-state-item-icon"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-price-tag-3-line"></use></svg></span><span class="site-state-item-count">26</span></a></div><a class="site-state-item hty-icon-button" href="https://nichijou.cloud" title="文档"><span class="site-state-item-icon"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-settings-line"></use></svg></span></a></nav><hr style="margin-bottom:0.5rem"><div class="links-of-author"><a class="links-of-author-item hty-icon-button" rel="noopener" href="https://github.com/in-a-day" title="GitHub" target="_blank" style="color:#6e5494"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-github-line"></use></svg></a></div></div><div class="sidebar-panel sidebar-panel-active" id="post-toc-wrap"><div class="post-toc"><div class="post-toc-content"><ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#Java%E5%86%85%E5%AD%98%E6%A8%A1%E5%9E%8B%E6%8A%BD%E8%B1%A1"><span class="toc-number">1.</span> <span class="toc-text">Java内存模型抽象</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E8%BF%90%E8%A1%8C%E6%97%B6%E6%95%B0%E6%8D%AE%E5%8C%BA"><span class="toc-number">1.1.</span> <span class="toc-text">运行时数据区</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%BC%93%E5%AD%98%E4%B8%80%E8%87%B4%E6%80%A7"><span class="toc-number">1.2.</span> <span class="toc-text">缓存一致性</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%86%85%E5%AD%98%E4%BA%A4%E4%BA%92%E6%93%8D%E4%BD%9C"><span class="toc-number">1.3.</span> <span class="toc-text">内存交互操作</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#volatile%E5%8F%98%E9%87%8F"><span class="toc-number">1.4.</span> <span class="toc-text">volatile变量</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#volatile%E5%8F%98%E9%87%8F%E4%B8%A4%E4%B8%AA%E7%89%B9%E6%80%A7"><span class="toc-number">1.4.1.</span> <span class="toc-text">volatile变量两个特性:</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E5%8F%8C%E9%87%8D%E6%A3%80%E6%9F%A5%E9%94%81-Double-Check-Lock-DCL"><span class="toc-number">1.4.2.</span> <span class="toc-text">双重检查锁(Double Check Lock, DCL)</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#volatile-%E5%92%8C-monitor"><span class="toc-number">1.5.</span> <span class="toc-text">volatile 和 monitor</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%86%85%E5%AD%98%E5%B1%8F%E9%9A%9C-memory"><span class="toc-number">1.6.</span> <span class="toc-text">内存屏障(memory)</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#LoadLoad%E5%B1%8F%E9%9A%9C"><span class="toc-number">1.6.1.</span> <span class="toc-text">LoadLoad屏障</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#StoreStore%E5%B1%8F%E9%9A%9C"><span class="toc-number">1.6.2.</span> <span class="toc-text">StoreStore屏障</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#LoadStore%E5%B1%8F%E9%9A%9C"><span class="toc-number">1.6.3.</span> <span class="toc-text">LoadStore屏障</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#StoreLoad%E5%B1%8F%E9%9A%9C"><span class="toc-number">1.6.4.</span> <span class="toc-text">StoreLoad屏障</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Happens-Before-%E5%85%88%E8%A1%8C%E5%8F%91%E7%94%9F%E5%8E%9F%E5%88%99"><span class="toc-number">1.7.</span> <span class="toc-text">Happens-Before(先行发生原则)</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#JMM%E5%A4%A9%E7%84%B6%E6%94%AF%E6%8C%81%E7%9A%84Happens-Before"><span class="toc-number">1.7.1.</span> <span class="toc-text">JMM天然支持的Happens-Before</span></a></li></ol></li></ol></li></ol></div></div></div><div class="tag-cloud"><div class="tag-cloud-tags"><a href="/tags/OAuth2/" style="font-size: 14px; color: #8895a2">OAuth2</a> <a href="/tags/dp/" style="font-size: 12px; color: #999">dp</a> <a href="/tags/gof/" style="font-size: 20px; color: #558abc">gof</a> <a href="/tags/java/" style="font-size: 30px; color: #0078e7">java</a> <a href="/tags/java-base/" style="font-size: 12px; color: #999">java-base</a> <a href="/tags/jvm/" style="font-size: 16px; color: #7792aa">jvm</a> <a href="/tags/jwt/" style="font-size: 12px; color: #999">jwt</a> <a href="/tags/leetcode/" style="font-size: 28px; color: #117cde">leetcode</a> <a href="/tags/mysql/" style="font-size: 12px; color: #999">mysql</a> <a href="/tags/nichijou/" style="font-size: 18px; color: #668eb3">nichijou</a> <a href="/tags/os/" style="font-size: 18px; color: #668eb3">os</a> <a href="/tags/redis/" style="font-size: 12px; color: #999">redis</a> <a href="/tags/spring/" style="font-size: 26px; color: #227fd6">spring</a> <a href="/tags/spring-security/" style="font-size: 22px; color: #4487c4">spring security</a> <a href="/tags/tree/" style="font-size: 12px; color: #999">tree</a> <a href="/tags/%E4%BA%8C%E5%88%86/" style="font-size: 12px; color: #999">二分</a> <a href="/tags/%E5%86%85%E5%AD%98%E8%99%9A%E6%8B%9F%E5%8C%96/" style="font-size: 12px; color: #999">内存虚拟化</a> <a href="/tags/%E5%88%9B%E5%BB%BA%E5%9E%8B/" style="font-size: 14px; color: #8895a2">创建型</a> <a href="/tags/%E5%8F%8C%E6%8C%87%E9%92%88/" style="font-size: 14px; color: #8895a2">双指针</a> <a href="/tags/%E5%A4%9A%E7%BA%BF%E7%A8%8B/" style="font-size: 24px; color: #3383cd">多线程</a></div></div></aside><main class="sidebar-translate" id="content"><div id="post"><article class="post-block" itemscope itemtype="https://schema.org/Article"><link itemprop="mainEntityOfPage" href="http://nichijou.cloud/2021/02/25/java/concurrent/jmm/"><span hidden itemprop="author" itemscope itemtype="https://schema.org/Person"><meta itemprop="name" content="z"><meta itemprop="description"></span><span hidden itemprop="publisher" itemscope itemtype="https://schema.org/Organization"><meta itemprop="name" content="日常"></span><header class="post-header"><h1 class="post-title" itemprop="name headline">Java内存模型<a class="post-edit-link" href="https://github.com/in-a-day/in-a-day.github.io/tree/hexo/source/_posts/java/concurrent/jmm.md" target="_blank" title="编辑" rel="noopener"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-edit-line"></use></svg></a></h1><div class="post-meta"><div class="post-time" style="display:inline-block"><span class="post-meta-item-icon"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-calendar-line"></use></svg></span> <time title="创建时间：2021-02-25 11:33:00" itemprop="dateCreated datePublished" datetime="2021-02-25T11:33:00+00:00">2021-02-25</time><span class="post-meta-divider">-</span><span class="post-meta-item-icon"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-calendar-2-line"></use></svg></span> <time title="修改时间：2021-06-03 09:28:35" itemprop="dateModified" datetime="2021-06-03T09:28:35+00:00">2021-06-03</time></div><div class="post-classify"><span class="post-category"> <span class="post-meta-item-icon" style="margin-right:3px;"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-folder-line"></use></svg></span><span itemprop="about" itemscope itemtype="https://schema.org/Thing"><a class="category" href="/categories/java/" style="--text-color:var(--hty-text-color)" itemprop="url" rel="index"><span itemprop="text">java</span></a></span></span><span class="post-tag"><span class="post-meta-divider">-</span><a class="tag" href="/tags/java/" style="--text-color:crimson"><span class="post-meta-item-icon"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-price-tag-3-line"></use></svg></span><span class="tag-name">java</span></a><a class="tag" href="/tags/%E5%A4%9A%E7%BA%BF%E7%A8%8B/" style="--text-color:var(--hty-text-color)"><span class="post-meta-item-icon"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-price-tag-3-line"></use></svg></span><span class="tag-name">多线程</span></a></span></div></div></header><section class="post-body" itemprop="articleBody"><div class="post-content markdown-body" style="--smc-primary:#0078E7;"><h2 id="Java内存模型抽象"><a href="#Java内存模型抽象" class="headerlink" title="Java内存模型抽象"></a>Java内存模型抽象</h2><h3 id="运行时数据区"><a href="#运行时数据区" class="headerlink" title="运行时数据区"></a>运行时数据区</h3><p><img src="https://cdn.jsdelivr.net/gh/in-a-day/cdn@main/images/java/concurrent/Java%E8%BF%90%E8%A1%8C%E6%97%B6%E6%95%B0%E6%8D%AE%E5%8C%BA.png" alt="java运行时数据区" loading="lazy"><em>java运行时数据区</em></p>
+<p>对于每个线程来说, 栈是私有的, 堆是共有的. 栈中的变量不会共享, 不会受到内存模型的影响. 堆中的变量是共享的, 称之为共享变量.</p>
+<h3 id="缓存一致性"><a href="#缓存一致性" class="headerlink" title="缓存一致性"></a>缓存一致性</h3><p>尽管堆中的变量是共享的, 仍然会有内存不可见的问题. 现代计算机通常会在高速缓存区中缓存共享变量.</p>
+<blockquote>
+<p>线程间共享变量存在于主存中, 每个线程都会有一个私有的工作内存, 存储了共享变量的副本. 工作内存是Java内存的一个抽象模式, 实际并不存在. 其涵盖了缓存, 写缓冲区, 寄存器等.</p>
+</blockquote>
+<p>Java线程间通信由Java内存模型控制(JMM). JMM抽象示意图如下:<br><img src="https://cdn.jsdelivr.net/gh/in-a-day/cdn@main/images/java/concurrent/JMM%E6%8A%BD%E8%B1%A1%E7%A4%BA%E6%84%8F%E5%9B%BE.jpg" alt="jmm抽象示意图" loading="lazy"></p>
+<p>从图中可以看出:</p>
+<ol>
+<li>所有的共享变量都存在于主内存中.</li>
+<li>每个线程都维护一个共享变量的副本.</li>
+<li>如果A, B线程需要通信, 则必须进行以下两个步骤:<ol>
+<li>A将共享变量更新到主存.</li>
+<li>B从主存读取A更新的共享变量到工作内存.</li>
+</ol>
+</li>
+</ol>
+<p>JMM规定: 线程对共享变量的所有操作必须现在工作内存进行, 不能直接在主存中操作. 所以B线程首先在工作内存中查找共享变量, 发现该变量更新了, 再从主存拷贝该变量的值到工作内存中.</p>
+<p>线程如何知道共享变量更新?</p>
+<blockquote>
+<p>JMM通过控制主存与每个工作内存之间的交互, 来提供内存的可见性. </p>
+</blockquote>
+<p>Java中的volatile关键字保证共享变量的可见性并禁止指令重排序. synchronized关键字保证了可见性及原子性. JMM底层使用内存屏障来实现内存的可见性及禁止重排序.</p>
+<p>Java内存模型与硬件关系图:<br><img src="https://cdn.jsdelivr.net/gh/in-a-day/cdn@main/images/java/concurrent/java%E5%86%85%E5%AD%98%E6%A8%A1%E5%9E%8B%E4%B8%8E%E7%A1%AC%E4%BB%B6%E5%85%B3%E7%B3%BB.jpg" alt="java内存模型与硬件关系" loading="lazy"></p>
+<p><img src="https://cdn.jsdelivr.net/gh/in-a-day/cdn@main/images/java/concurrent/java%E5%86%85%E5%AD%98%E6%A8%A1%E5%9E%8B2.png" alt="java内存模型与硬件关系" loading="lazy"></p>
+<h3 id="内存交互操作"><a href="#内存交互操作" class="headerlink" title="内存交互操作"></a>内存交互操作</h3><p>Java内存模型定义了8个操作完成主内存与工作内存的交互操作, 且保证每种操作都是原子的(double, long类型变量的load, store, read, write操作在某些平台上允许例外):</p>
+<ul>
+<li>lock: 作用于主内存的变量, 把变量标识为一条线程独占的状态.</li>
+<li>unlock: 作用于主内存变量, 将处于锁定状态的变量释放出来, 释放后的变量可以被其他线程锁定.</li>
+<li>read: 作用于主内存变量, 把一个变量值从主内存传输到线程的工作内存中, 以便load动作的使用.</li>
+<li>load: 作用于工作内存变量, 将read操作从主存中得到的变量放入工作内存中.</li>
+<li>use: 作用于工作内存变量, 将工作内存中一个变量的值传递给执行引擎, 每当虚拟机遇到一个需要使用变量的值的字节码指令时执行这个操作.</li>
+<li>assign: 作用于工作内存变量, 将从执行引擎接收的值赋值给工作内存的变量, 每当虚拟机遇到一个给变量赋值的字节码指令时执行这个操作.</li>
+<li>store: 作用于工作内存变量, 将工作内存中一个变量的值传递到主内存中, 以便随后的write操作使用.</li>
+<li>write: 作用于主内存变量, 将store操作从工作内存中得到的变量值放入主内存的变量中.</li>
+</ul>
+<p>Java内存模式同时规定了在执行以上8中操作的同时必须同时满足一下规则:</p>
+<ul>
+<li>不允许read, load, store, write操作之一单独出现, 即不允许变量从主内存中读取了但工作内存不接受, 或工作内存发起回写但是主内存不接受的情况.</li>
+<li>不允许一个线程丢弃其最近的assign操作, 即变量在工作内存中改变了之后, 必须将该改变同步回主内存.</li>
+<li>不允许一个线程无原因(没有发生过任何assign操作)把数据从线程的工作内存同步回主内存.</li>
+<li>一个新的变量只能在主内存中诞生, 不允许在工作内存中直接使用一个未被初始化(load或assign)的变量. 即对一个变量实施use, store操作之前, 必须执行assgin和load操作.</li>
+<li>一个变量在同一时刻只允许一条线程对其进行lock, 但lock可以被同一线程重复执行多次, 多次执行lock后, 只有执行相同次数的unlock, 变量才会解锁.</li>
+<li>如果对一个变量执行lock, 将会清空工作内存中此变量的值, 在执行引擎使用这个变量前, 需要重新执行load或assign操作初始化变量的值.</li>
+<li>如果一个变量没有被lock锁定, 那么不允许对其执行unlock, 也不允许区unlock被其他线程锁定的变量.</li>
+<li>对一个变量执行unlock之前, 必须把此变量同步回主内存中(执行store, write操作).</li>
+</ul>
+<h3 id="volatile变量"><a href="#volatile变量" class="headerlink" title="volatile变量"></a>volatile变量</h3><h4 id="volatile变量两个特性"><a href="#volatile变量两个特性" class="headerlink" title="volatile变量两个特性:"></a>volatile变量两个特性:</h4><ul>
+<li><p><strong>保证变量对所有线程可见性, 一个线程修改了变量的值, 其他线程可以立即得知.但是并不保证变量操作的原子性.</strong></p>
+<pre class="line-numbers language-java" data-language="java"><code class="language-java">  <span class="token keyword">public</span> <span class="token keyword">static</span> <span class="token keyword">volatile</span> <span class="token keyword">int</span> a <span class="token operator">=</span> <span class="token number">0</span><span class="token punctuation">;</span>
+  <span class="token keyword">public</span> <span class="token keyword">static</span> <span class="token keyword">void</span> <span class="token function">main</span><span class="token punctuation">(</span><span class="token class-name">String</span><span class="token punctuation">[</span><span class="token punctuation">]</span> args<span class="token punctuation">)</span> <span class="token keyword">throws</span> <span class="token class-name">InterruptedException</span> <span class="token punctuation">&#123;</span>
+<span class="token comment">// 执行a++ 10w次</span>
+      <span class="token class-name">Thread</span> t1 <span class="token operator">=</span> <span class="token keyword">new</span> <span class="token class-name">Thread</span><span class="token punctuation">(</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token operator">-></span> <span class="token class-name">IntStream</span><span class="token punctuation">.</span><span class="token function">range</span><span class="token punctuation">(</span><span class="token number">1</span><span class="token punctuation">,</span> <span class="token number">100000</span><span class="token punctuation">)</span><span class="token punctuation">.</span><span class="token function">forEach</span><span class="token punctuation">(</span>it <span class="token operator">-></span> a<span class="token operator">++</span><span class="token punctuation">)</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+<span class="token comment">// 执行a++ 10w次</span>
+      <span class="token class-name">Thread</span> t2 <span class="token operator">=</span> <span class="token keyword">new</span> <span class="token class-name">Thread</span><span class="token punctuation">(</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token operator">-></span> <span class="token class-name">IntStream</span><span class="token punctuation">.</span><span class="token function">range</span><span class="token punctuation">(</span><span class="token number">1</span><span class="token punctuation">,</span> <span class="token number">100000</span><span class="token punctuation">)</span><span class="token punctuation">.</span><span class="token function">forEach</span><span class="token punctuation">(</span>it <span class="token operator">-></span> a<span class="token operator">++</span><span class="token punctuation">)</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+      t1<span class="token punctuation">.</span><span class="token function">start</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+      t2<span class="token punctuation">.</span><span class="token function">start</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+      t1<span class="token punctuation">.</span><span class="token function">join</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+      t2<span class="token punctuation">.</span><span class="token function">join</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+<span class="token comment">// 通常a的值 &lt; 200000</span>
+      <span class="token class-name">System</span><span class="token punctuation">.</span>out<span class="token punctuation">.</span><span class="token function">println</span><span class="token punctuation">(</span>a<span class="token punctuation">)</span><span class="token punctuation">;</span>
+  <span class="token punctuation">&#125;</span>
+<span aria-hidden="true" class="line-numbers-rows"><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></span></code></pre>
+<p>上述代码每次执行的结果都会小于200000, 说明volatile并不会保证变量操作的原子性.</p>
+</li>
+<li><p><strong>禁止指令重排序优化</strong><br>cpu在执行一系列指令的时候, 在不影响单线程的执行结果下, 可能会将指令重新排序. Java的运行时编译器(JIT)也会将也会将执行进行重排序.Java中有个as-if-serial术语表示不管如何重排序, 必须保证单线程下重排序的结果与本身应有的结果是一致的.<br>例如以下代码:</p>
+<pre class="line-numbers language-java" data-language="java"><code class="language-java"><span class="token keyword">int</span> a <span class="token operator">=</span> <span class="token number">0</span><span class="token punctuation">;</span>
+<span class="token keyword">int</span> b <span class="token operator">=</span> <span class="token number">1</span><span class="token punctuation">;</span>
+<span class="token keyword">int</span> c <span class="token operator">=</span> a <span class="token operator">+</span> b<span class="token punctuation">;</span><span aria-hidden="true" class="line-numbers-rows"><span></span><span></span><span></span></span></code></pre>
+<p>以上代码在执行时大致有一下几个步骤:</p>
+<pre class="line-numbers language-none"><code class="language-none">1. a赋值0
+2. b赋值1
+3. 取a值
+4. 取b的值
+5. 将a, b值相加存入c<span aria-hidden="true" class="line-numbers-rows"><span></span><span></span><span></span><span></span><span></span></span></code></pre>
+
+</li>
+</ul>
+<p>以上动作有很多种重排序的方式(例如2, 1, 3, 4, 5), 但是必须保证在动作5执行之前, a, b的值是正确的值.<br>接下来看一个指令重排序的例子:</p>
+<pre class="line-numbers language-java" data-language="java"><code class="language-java"><span class="token keyword">static</span> <span class="token keyword">int</span> a <span class="token operator">=</span> <span class="token number">0</span><span class="token punctuation">,</span> b <span class="token operator">=</span> <span class="token number">0</span><span class="token punctuation">,</span> c <span class="token operator">=</span> <span class="token number">0</span><span class="token punctuation">,</span> d <span class="token operator">=</span> <span class="token number">0</span><span class="token punctuation">;</span>
+<span class="token keyword">public</span> <span class="token keyword">static</span> <span class="token keyword">void</span> <span class="token function">main</span><span class="token punctuation">(</span><span class="token class-name">String</span><span class="token punctuation">[</span><span class="token punctuation">]</span> args<span class="token punctuation">)</span> <span class="token keyword">throws</span> <span class="token class-name">InterruptedException</span> <span class="token punctuation">&#123;</span>
+    <span class="token keyword">int</span> count <span class="token operator">=</span> <span class="token number">0</span><span class="token punctuation">;</span>
+    <span class="token keyword">while</span> <span class="token punctuation">(</span><span class="token boolean">true</span><span class="token punctuation">)</span> <span class="token punctuation">&#123;</span>
+        a <span class="token operator">=</span> b <span class="token operator">=</span> c <span class="token operator">=</span> d <span class="token operator">=</span> <span class="token number">0</span><span class="token punctuation">;</span>
+        <span class="token class-name">Thread</span> t1 <span class="token operator">=</span> <span class="token keyword">new</span> <span class="token class-name">Thread</span><span class="token punctuation">(</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token operator">-></span> <span class="token punctuation">&#123;</span>
+            a <span class="token operator">=</span> <span class="token number">1</span><span class="token punctuation">;</span>
+            b <span class="token operator">=</span> c<span class="token punctuation">;</span>
+        <span class="token punctuation">&#125;</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+
+        <span class="token class-name">Thread</span> t2 <span class="token operator">=</span> <span class="token keyword">new</span> <span class="token class-name">Thread</span><span class="token punctuation">(</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token operator">-></span> <span class="token punctuation">&#123;</span>
+            c <span class="token operator">=</span> <span class="token number">1</span><span class="token punctuation">;</span>
+            d <span class="token operator">=</span> a<span class="token punctuation">;</span>
+        <span class="token punctuation">&#125;</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+        t1<span class="token punctuation">.</span><span class="token function">start</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+        t2<span class="token punctuation">.</span><span class="token function">start</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+        t1<span class="token punctuation">.</span><span class="token function">join</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+        t2<span class="token punctuation">.</span><span class="token function">join</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+        count<span class="token operator">++</span><span class="token punctuation">;</span>
+        <span class="token keyword">if</span> <span class="token punctuation">(</span>b <span class="token operator">==</span> <span class="token number">0</span> <span class="token operator">&amp;&amp;</span> d <span class="token operator">==</span> <span class="token number">0</span><span class="token punctuation">)</span> <span class="token punctuation">&#123;</span>
+            <span class="token class-name">System</span><span class="token punctuation">.</span>out<span class="token punctuation">.</span><span class="token function">println</span><span class="token punctuation">(</span><span class="token string">"产生重排序: "</span> <span class="token operator">+</span> count <span class="token operator">+</span>  <span class="token string">", b: "</span> <span class="token operator">+</span> b <span class="token operator">+</span> <span class="token string">", d: "</span> <span class="token operator">+</span> d<span class="token punctuation">)</span><span class="token punctuation">;</span>
+            <span class="token keyword">break</span><span class="token punctuation">;</span>
+        <span class="token punctuation">&#125;</span>
+    <span class="token punctuation">&#125;</span>
+<span class="token punctuation">&#125;</span><span aria-hidden="true" class="line-numbers-rows"><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></span></code></pre>
+<p>上述代码如果没有指令重排序, 运行结果可能为b, d的结果可能是以下几种: (1, 0), (0, 1), (1, 1). 然而在实际运行情况下会打印出b, d结果为(0, 0)的情况(测试用了354062次), 说明了存在指令重排序. 可能是线程t1中重排序了<code>b = c;a = 1</code>, 或是t2重排序<code>d = a; c = 1;</code>, 又或是二者都进行了重排序.</p>
+<p><strong>由于volatile变量只能保证可见性, 在不符合以下两条规则的运算场景中, 仍然需要加锁来保证原子性:</strong></p>
+<ul>
+<li>运算结果并不依赖变量当前的值, 或者能保证只有单一的线程修改变量的值.</li>
+<li>变量不需要与其他的状态变量共同参与不变约束.</li>
+</ul>
+<h4 id="双重检查锁-Double-Check-Lock-DCL"><a href="#双重检查锁-Double-Check-Lock-DCL" class="headerlink" title="双重检查锁(Double Check Lock, DCL)"></a>双重检查锁(Double Check Lock, DCL)</h4><p>常见的一种错误的DCL单例模式(多线程下):</p>
+<pre class="line-numbers language-java" data-language="java"><code class="language-java"><span class="token keyword">public</span> <span class="token keyword">class</span> <span class="token class-name">Singleton</span> <span class="token punctuation">&#123;</span>
+    <span class="token keyword">private</span> <span class="token keyword">static</span> <span class="token class-name">Singleton</span> instance<span class="token punctuation">;</span>
+
+    <span class="token keyword">public</span> <span class="token keyword">static</span> <span class="token class-name">Singleton</span> <span class="token function">getInstance</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token punctuation">&#123;</span>
+        <span class="token keyword">if</span> <span class="token punctuation">(</span>instance <span class="token operator">==</span> <span class="token keyword">null</span><span class="token punctuation">)</span> <span class="token punctuation">&#123;</span>
+            <span class="token keyword">synchronized</span><span class="token punctuation">(</span><span class="token class-name">Singleton</span><span class="token punctuation">.</span><span class="token keyword">class</span><span class="token punctuation">)</span> <span class="token punctuation">&#123;</span>
+                <span class="token keyword">if</span> <span class="token punctuation">(</span>instance <span class="token operator">==</span> <span class="token keyword">null</span><span class="token punctuation">)</span> <span class="token punctuation">&#123;</span>
+                    instance <span class="token operator">=</span> <span class="token keyword">new</span> <span class="token class-name">Singleton</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+                <span class="token punctuation">&#125;</span>
+            <span class="token punctuation">&#125;</span>
+        <span class="token punctuation">&#125;</span>
+        <span class="token keyword">return</span> instance<span class="token punctuation">;</span>
+    <span class="token punctuation">&#125;</span>
+<span class="token punctuation">&#125;</span><span aria-hidden="true" class="line-numbers-rows"><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></span></code></pre>
+<p>双重检查锁的第二个判断是否为空<code>instance == null</code>是因为多线程情况下, 如果A线程判断instance为空, 并获得了锁, 但A此时尚未进行instance的初始化, 此时调度B线程判断instance也为空, 紧接着线程调度A运行, 完成了instance的初始化, 接着调度B线程, 获得锁, 此时A已经完成了instance的初始化, 如果B线程不再进行一次<code>instance == null</code>的判断, 会重新初始化这个instance变量, 破坏了单例.</p>
+<p>以上代码在多线程情况下可能会导致错误. 线程可能获取值为<code>null</code>的<code>instance</code>, 这是由于<code>instance = new Singleton</code>语句可能会发生重排序.</p>
+<pre class="line-numbers language-java" data-language="java"><code class="language-java">instance <span class="token operator">=</span> <span class="token keyword">new</span> <span class="token class-name">Singleton</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+
+<span class="token comment">// 可以分解为以下三个步骤</span>
+<span class="token number">1.</span> memory <span class="token operator">=</span> <span class="token function">allocate</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span> <span class="token comment">// 分配内存</span>
+<span class="token number">2.</span> <span class="token function">ctorInstance</span><span class="token punctuation">(</span>memory<span class="token punctuation">)</span><span class="token punctuation">;</span> <span class="token comment">// 初始化对象</span>
+<span class="token number">3.</span> s <span class="token operator">=</span> memory <span class="token comment">// 将s指向刚分配的地址</span>
+
+<span class="token comment">// 上述三个步骤可能会被重排序</span>
+<span class="token number">1.</span> memory <span class="token operator">=</span> <span class="token function">allocate</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span> <span class="token comment">// 分配内存</span>
+<span class="token number">3.</span> s <span class="token operator">=</span> memory 
+<span class="token number">2.</span> <span class="token function">ctorInstance</span><span class="token punctuation">(</span>memory<span class="token punctuation">)</span><span class="token punctuation">;</span> <span class="token comment">// 初始化对象</span><span aria-hidden="true" class="line-numbers-rows"><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></span></code></pre>
+<p>如果发生了上述的重排序, 那么如果线程A执行到<code>s=memory</code>语句, 此时线程B执行, B判断<code>instance != null</code>, 而此时的<code>instance</code>还并未完成初始化, B就会拿到一个尚未初始化完成的<code>instance</code>.<br>解决以上问题只需要将<code>instance</code>变量声明为volatile类型, 禁止指令重排序优化:</p>
+<pre class="line-numbers language-java" data-language="java"><code class="language-java"><span class="token keyword">private</span> <span class="token keyword">static</span> <span class="token keyword">volatile</span> <span class="token class-name">Singleton</span> instance<span class="token punctuation">;</span><span aria-hidden="true" class="line-numbers-rows"><span></span></span></code></pre>
+
+
+<h3 id="volatile-和-monitor"><a href="#volatile-和-monitor" class="headerlink" title="volatile 和 monitor"></a>volatile 和 monitor</h3><p>JMM对于volatile和monitor的指令重排序规则:<br><img src="https://cdn.jsdelivr.net/gh/in-a-day/cdn@main/images/java/concurrent/jmm_volatile_monitor_rule.png" alt="jmm_volatile_monitor_rule" loading="lazy"><em>JMM对于volatile和monitor的指令重排序规则</em></p>
+<h3 id="内存屏障-memory"><a href="#内存屏障-memory" class="headerlink" title="内存屏障(memory)"></a>内存屏障(memory)</h3><p>内存屏障有以下几种:</p>
+<h4 id="LoadLoad屏障"><a href="#LoadLoad屏障" class="headerlink" title="LoadLoad屏障"></a>LoadLoad屏障</h4><p>语句: Load1; LoadLoad; Load2;<br>在Load2及后续读取操作要读取的数据被访问前, 保证Load1要读取的数据被读取完毕.</p>
+<h4 id="StoreStore屏障"><a href="#StoreStore屏障" class="headerlink" title="StoreStore屏障"></a>StoreStore屏障</h4><p>语句: Store1; StoreStore; Store2;<br>在Store2及后续写入操作执行前, 保证Store1的写入操作对其他处理器可见.</p>
+<h4 id="LoadStore屏障"><a href="#LoadStore屏障" class="headerlink" title="LoadStore屏障"></a>LoadStore屏障</h4><p>语句: Load1; LoadStore; Store2;<br>在Store2及后续写入操作执行前, 保证Load1要读取的数据被读取完毕.</p>
+<h4 id="StoreLoad屏障"><a href="#StoreLoad屏障" class="headerlink" title="StoreLoad屏障"></a>StoreLoad屏障</h4><p>语句: Store1; StoreLoad; Load2;<br>在Load2及后续读取操作执行前, 保证Store1的写入对所有的处理器可见. 其开销是四种屏障中最大的. 在大多数处理器实现中, 这个屏障是万能屏障, 兼具其他三种内存屏障的功能.</p>
+<p>Java编译器内存屏障使用方式:<br><img src="https://cdn.jsdelivr.net/gh/in-a-day/cdn@main/images/java/concurrent/memory_barrier_rule_new.png" alt="jmm_volatile_monitor_rule" loading="lazy"><em>内存屏障规则</em></p>
+<h3 id="Happens-Before-先行发生原则"><a href="#Happens-Before-先行发生原则" class="headerlink" title="Happens-Before(先行发生原则)"></a>Happens-Before(先行发生原则)</h3><blockquote>
+<p>Java happens-before是Java内存模式中定义的两项操作间的偏序关系. 如A操作happens-before与B操作, 则在B操作发生之前, A操作的产生的影响能被B操作观察到. 例如以下代码:</p>
+</blockquote>
+<pre class="line-numbers language-java" data-language="java"><code class="language-java"><span class="token comment">// A操作</span>
+i <span class="token operator">=</span> <span class="token number">1</span><span class="token punctuation">;</span>
+<span class="token comment">// B操作</span>
+j <span class="token operator">=</span> i<span class="token punctuation">;</span><span aria-hidden="true" class="line-numbers-rows"><span></span><span></span><span></span><span></span></span></code></pre>
+<p>在B操作完成之前, A操作一定先完成.</p>
+<p><strong>NB:</strong><br><strong>两个操作间存在happens-before关系, 并不意味着Java具体实现按照指定的关系顺序执行, 如果重排序的结果与按happens-before关系来执行的结果一致, 那么JMM也允许这样的重排序.</strong></p>
+<pre class="line-numbers language-java" data-language="java"><code class="language-java">i <span class="token operator">=</span> <span class="token number">1</span><span class="token punctuation">;</span>
+j <span class="token operator">=</span> <span class="token number">2</span><span class="token punctuation">;</span>
+k <span class="token operator">=</span> i <span class="token operator">+</span> j<span class="token punctuation">;</span><span aria-hidden="true" class="line-numbers-rows"><span></span><span></span><span></span></span></code></pre>
+<p><strong>以上代码可能先执行i = 1, 也可能先执行j = 2, 最终结果不影响k = i + j的执行.</strong></p>
+<h4 id="JMM天然支持的Happens-Before"><a href="#JMM天然支持的Happens-Before" class="headerlink" title="JMM天然支持的Happens-Before"></a>JMM天然支持的Happens-Before</h4><blockquote>
+<p>Java无需任何同步手段就可以保证的先行发生规则: </p>
+</blockquote>
+<ol>
+<li>程序次序规则(Program Order Rule): 在一个线程内, 按照控制流顺序, 书写在前面的操作先行发生于书写在后面的操作.</li>
+<li>管程锁定规则(Monitor Lock Rule): 一个unlock操作先行发生于后面对同一个锁的lock操作. 这里必须是”同一个锁”, “后面”指的是时间上的先后.</li>
+<li>volatile变量规则(Volatile Variable Rule): 对一个volatile变量的写操作先行发生于后面对这个变量的读操作. “后面”指的是时间上的先后.</li>
+<li>线程启动规则(Thread Start Rule): Thread对象的start()方法先行发生于此线程的每个动作.</li>
+<li>线程终止规则(Thread Termination Rule): 线程中所有操作都先行发生关于对此线程的终止检测. 通过Thread.join()方法是否结束, Thread.isAlive()的返回值等方法检测线程是否已经终止执行. 如果A线程调用了线程B的join()方法并发返回成功, 那么B线程的任意操作都发生于A线程调用B.join()返回成功之前.</li>
+<li>线程中断规则(Thread Interruption Rule): 对线程interrupt()方法的调用先行发生于被中断线程的代码检测到中断事件的发生. 通过Thread.interrupted()方法检测是否有中断发生.</li>
+<li>对象终结规则(Finalizer Rule): 一个对象的初始化完成(构造函数执行结构)先行发生于他的finalize()方法的开始.</li>
+<li>传递性(Transitivity): 如果操作A先行发生于操作B, 操作B先行发生于操作C, 那么就可以得出操作A先行发生于操作C.</li>
+</ol>
+</div><ul class="post-copyright"><li class="post-copyright-author"><strong>本文作者：</strong>z</li><li class="post-copyright-link"><strong>本文链接：</strong><a href="http://nichijou.cloud/2021/02/25/java/concurrent/jmm/" title="Java内存模型">http://nichijou.cloud/2021/02/25/java/concurrent/jmm/</a></li><li class="post-copyright-license"><strong>版权声明：</strong>本博客所有文章除特别声明外，均默认采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh" target="_blank" rel="noopener" title="CC BY-NC-SA 4.0 "><svg class="icon"><use xlink:href="#icon-creative-commons-line"></use></svg><svg class="icon"><use xlink:href="#icon-creative-commons-by-line"></use></svg><svg class="icon"><use xlink:href="#icon-creative-commons-nc-line"></use></svg><svg class="icon"><use xlink:href="#icon-creative-commons-sa-line"></use></svg></a> 许可协议。</li></ul></section></article><div class="post-nav"><div class="post-nav-item"><a class="post-nav-prev" href="/2021/02/28/spring/ioc/%E5%B8%B8%E7%94%A8%E6%B3%A8%E8%A7%A3/" rel="prev" title="常用注解"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-arrow-left-s-line"></use></svg><span class="post-nav-text">常用注解</span></a></div><div class="post-nav-item"><a class="post-nav-next" href="/2021/02/25/java/concurrent/thread_communication/" rel="next" title="线程通信"><span class="post-nav-text">线程通信</span><svg class="icon" aria-hidden="true"><use xlink:href="#icon-arrow-right-s-line"></use></svg></a></div></div></div></main><footer class="sidebar-translate" id="footer"><div class="copyright"><span>&copy; 2021 </span><span class="with-love" id="animate"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-cloud-line"></use></svg></span><span class="author"> z</span></div><div class="powered"><span>由 <a href="https://hexo.io" target="_blank" rel="noopener">Hexo</a> 驱动 v5.4.0</span><span class="footer-separator">|</span><span>主题 - <a rel="noopener" href="https://github.com/YunYouJun/hexo-theme-yun" target="_blank"><span>Yun</span></a> v1.4.0</span></div></footer><a class="hty-icon-button" id="goUp" aria-label="back-to-top" href="#"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-arrow-up-s-line"></use></svg><svg class="progress-circle-container" viewBox="0 0 100 100"><circle class="progress-circle" id="progressCircle" cx="50" cy="50" r="48" fill="none" stroke="#0078E7" stroke-width="2" stroke-linecap="round"></circle></svg></a><a class="popup-trigger hty-icon-button icon-search" id="search" href="javascript:;" title="搜索"><span class="site-state-item-icon"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-search-line"></use></svg></span></a><script>window.addEventListener("DOMContentLoaded", () => {
+  // Handle and trigger popup window
+  document.querySelector(".popup-trigger").addEventListener("click", () => {
+    document.querySelector(".popup").classList.add("show");
+    setTimeout(() => {
+      document.querySelector(".search-input").focus();
+    }, 100);
+  });
+
+  // Monitor main search box
+  const onPopupClose = () => {
+    document.querySelector(".popup").classList.remove("show");
+  };
+
+  document.querySelector(".popup-btn-close").addEventListener("click", () => {
+    onPopupClose();
+  });
+
+  window.addEventListener("keyup", event => {
+    if (event.key === "Escape") {
+      onPopupClose();
+    }
+  });
+});
+</script><script src="/js/search/local-search.js" defer></script><div class="popup search-popup"><div class="search-header"><span class="popup-btn-close close-icon hty-icon-button"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-close-line"></use></svg></span></div><div class="search-input-container"><input class="search-input" id="local-search-input" type="text" placeholder="搜索..." value=""></div><div id="local-search-result"></div></div></div></body></html>

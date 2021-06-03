@@ -1,0 +1,106 @@
+<!DOCTYPE html><html lang="zh-CN"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="theme-color" content="#0078E7"><meta name="author" content="z"><meta name="copyright" content="z"><meta name="generator" content="Hexo 5.4.0"><meta name="theme" content="hexo-theme-yun"><title>进程调度策略-多级反馈队列 | 日常</title><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@900&amp;display=swap" media="print" onload="this.media='all'"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/star-markdown-css@0.1.22/dist/yun/yun-markdown.min.css"><script src="//at.alicdn.com/t/font_1140697_ed8vp4atwoj.js" async></script><script src="https://cdn.jsdelivr.net/npm/scrollreveal/dist/scrollreveal.min.js" defer></script><script>document.addEventListener("DOMContentLoaded", () => {
+  [".post-card",".post-content img"].forEach((target)=> {
+    ScrollReveal().reveal(target);
+  })
+});
+</script><link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/katex@latest/dist/katex.min.css"><script defer src="https://cdn.jsdelivr.net/npm/katex@latest/dist/katex.min.js"></script><link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/katex@latest/dist/contrib/copy-tex.min.css"><script defer src="https://cdn.jsdelivr.net/npm/katex@latest/dist/contrib/copy-tex.min.js"></script><script defer src="https://cdn.jsdelivr.net/npm/katex@latest/dist/contrib/auto-render.min.js"></script><script>document.addEventListener("DOMContentLoaded", function() {
+  renderMathInElement(document.body, {
+    delimiters: [
+      {left: "$$", right: "$$", display: true},
+      {left: "$", right: "$", display: false},
+      {left: "\\(", right: "\\)", display: false},
+      {left: "\\[", right: "\\]", display: true}
+    ]
+  });
+});</script><link id="light-prism-css" rel="stylesheet" href="https://cdn.jsdelivr.net/npm/prismjs@1.20.0/themes/prism.css" media="(prefers-color-scheme: light)"><link id="dark-prism-css" rel="stylesheet" href="https://cdn.jsdelivr.net/npm/prismjs@1.20.0/themes/prism-tomorrow.css" media="(prefers-color-scheme: dark)"><link rel="shortcut icon" type="image/svg+xml" href="https://cdn.jsdelivr.net/gh/in-a-day/cdn@main/images/blog/favicon.ico"><link rel="mask-icon" href="https://cdn.jsdelivr.net/gh/in-a-day/cdn@main/images/blog/favicon.ico" color="#0078E7"><link rel="alternate icon" href="/yun.ico"><link rel="preload" href="/css/hexo-theme-yun.css" as="style"><link rel="preload" href="/js/utils.js" as="script"><link rel="preload" href="/js/hexo-theme-yun.js" as="script"><link rel="prefetch" href="/js/sidebar.js" as="script"><link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin><script id="yun-config">
+    const Yun = window.Yun || {};
+    window.CONFIG = {"hostname":"nichijou.cloud","root":"/","title":"日常","version":"1.4.0","mode":"light","copycode":true,"page":{"isPost":true},"anonymous_image":"https://cdn.jsdelivr.net/gh/YunYouJun/cdn/img/avatar/none.jpg","say":{"api":"/data/sentences.json"},"local_search":{"path":"/search.xml"}};
+  </script><link rel="stylesheet" href="/css/hexo-theme-yun.css"><script src="/js/utils.js"></script><script src="/js/hexo-theme-yun.js"></script><meta name="description" content="MLFQ(多级反馈队列) Multi-level Feedback Queue, MLFQ使用历史预测未来  MLFQ需要解决两方面的问题:   优化周转时间, 通常OS并不知道一个任务的运行时间, 而SJF, STCF都是基于已知任务运行时间的策略. 优化响应时间, RR响应时间较短, 但是周转时间比较长.  基础规则MLFQ拥有不同的队列, 每个队列都有不同的优先级. 在任意时间, 准备运行的">
+<meta property="og:type" content="article">
+<meta property="og:title" content="进程调度策略-多级反馈队列">
+<meta property="og:url" content="http://nichijou.cloud/2021/01/27/os/process_mlfq/index.html">
+<meta property="og:site_name" content="日常">
+<meta property="og:description" content="MLFQ(多级反馈队列) Multi-level Feedback Queue, MLFQ使用历史预测未来  MLFQ需要解决两方面的问题:   优化周转时间, 通常OS并不知道一个任务的运行时间, 而SJF, STCF都是基于已知任务运行时间的策略. 优化响应时间, RR响应时间较短, 但是周转时间比较长.  基础规则MLFQ拥有不同的队列, 每个队列都有不同的优先级. 在任意时间, 准备运行的">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2021-01-27T16:40:22.000Z">
+<meta property="article:modified_time" content="2021-06-03T09:28:35.718Z">
+<meta property="article:author" content="z">
+<meta property="article:tag" content="os">
+<meta property="article:tag" content="进程调度">
+<meta name="twitter:card" content="summary"></head><body><div class="container"><a class="sidebar-toggle hty-icon-button" id="menu-btn"><div class="hamburger hamburger--spin" type="button"><span class="hamburger-box"><span class="hamburger-inner"></span></span></div></a><div class="sidebar-toggle sidebar-overlay"></div><aside class="sidebar"><script src="/js/sidebar.js"></script><ul class="sidebar-nav"><li class="sidebar-nav-item sidebar-nav-toc hty-icon-button sidebar-nav-active" data-target="post-toc-wrap" title="文章目录"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-list-ordered"></use></svg></li><li class="sidebar-nav-item sidebar-nav-overview hty-icon-button" data-target="site-overview-wrap" title="站点概览"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-passport-line"></use></svg></li></ul><div class="sidebar-panel" id="site-overview-wrap"><div class="site-info fix-top"><a class="site-author-avatar" href="/about/" title="z"><img width="96" loading="lazy" src="https://cdn.jsdelivr.net/gh/in-a-day/cdn@main/images/blog/avatar.png" alt="z"></a><div class="site-author-name"><a href="/about/">z</a></div><a class="site-name" href="/about/site.html">日常</a><sub class="site-subtitle"></sub><div class="site-desciption"></div></div><nav class="site-state"><a class="site-state-item hty-icon-button icon-home" href="/" title="首页"><span class="site-state-item-icon"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-home-4-line"></use></svg></span></a><div class="site-state-item"><a href="/archives/" title="归档"><span class="site-state-item-icon"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-archive-line"></use></svg></span><span class="site-state-item-count">62</span></a></div><div class="site-state-item"><a href="/categories/" title="分类"><span class="site-state-item-icon"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-folder-2-line"></use></svg></span><span class="site-state-item-count">11</span></a></div><div class="site-state-item"><a href="/tags/" title="标签"><span class="site-state-item-icon"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-price-tag-3-line"></use></svg></span><span class="site-state-item-count">26</span></a></div><a class="site-state-item hty-icon-button" href="https://nichijou.cloud" title="文档"><span class="site-state-item-icon"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-settings-line"></use></svg></span></a></nav><hr style="margin-bottom:0.5rem"><div class="links-of-author"><a class="links-of-author-item hty-icon-button" rel="noopener" href="https://github.com/in-a-day" title="GitHub" target="_blank" style="color:#6e5494"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-github-line"></use></svg></a></div></div><div class="sidebar-panel sidebar-panel-active" id="post-toc-wrap"><div class="post-toc"><div class="post-toc-content"><ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#MLFQ-%E5%A4%9A%E7%BA%A7%E5%8F%8D%E9%A6%88%E9%98%9F%E5%88%97"><span class="toc-number">1.</span> <span class="toc-text">MLFQ(多级反馈队列)</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%9F%BA%E7%A1%80%E8%A7%84%E5%88%99"><span class="toc-number">1.1.</span> <span class="toc-text">基础规则</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%B0%9D%E8%AF%951-%E5%A6%82%E4%BD%95%E4%BF%AE%E6%94%B9%E4%BC%98%E5%85%88%E7%BA%A7"><span class="toc-number">1.2.</span> <span class="toc-text">尝试1: 如何修改优先级</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%B0%9D%E8%AF%952-%E4%BC%98%E5%85%88%E7%BA%A7%E6%8F%90%E5%8D%87"><span class="toc-number">1.3.</span> <span class="toc-text">尝试2: 优先级提升</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%B0%9D%E8%AF%953-%E6%9B%B4%E5%A5%BD%E7%9A%84%E7%BB%9F%E8%AE%A1"><span class="toc-number">1.4.</span> <span class="toc-text">尝试3: 更好的统计</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%85%B6%E4%BB%96%E9%97%AE%E9%A2%98"><span class="toc-number">1.5.</span> <span class="toc-text">其他问题</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%80%BB%E7%BB%93"><span class="toc-number">1.6.</span> <span class="toc-text">总结</span></a></li></ol></li></ol></div></div></div><div class="tag-cloud"><div class="tag-cloud-tags"><a href="/tags/OAuth2/" style="font-size: 14px; color: #8895a2">OAuth2</a> <a href="/tags/dp/" style="font-size: 12px; color: #999">dp</a> <a href="/tags/gof/" style="font-size: 20px; color: #558abc">gof</a> <a href="/tags/java/" style="font-size: 30px; color: #0078e7">java</a> <a href="/tags/java-base/" style="font-size: 12px; color: #999">java-base</a> <a href="/tags/jvm/" style="font-size: 16px; color: #7792aa">jvm</a> <a href="/tags/jwt/" style="font-size: 12px; color: #999">jwt</a> <a href="/tags/leetcode/" style="font-size: 28px; color: #117cde">leetcode</a> <a href="/tags/mysql/" style="font-size: 12px; color: #999">mysql</a> <a href="/tags/nichijou/" style="font-size: 18px; color: #668eb3">nichijou</a> <a href="/tags/os/" style="font-size: 18px; color: #668eb3">os</a> <a href="/tags/redis/" style="font-size: 12px; color: #999">redis</a> <a href="/tags/spring/" style="font-size: 26px; color: #227fd6">spring</a> <a href="/tags/spring-security/" style="font-size: 22px; color: #4487c4">spring security</a> <a href="/tags/tree/" style="font-size: 12px; color: #999">tree</a> <a href="/tags/%E4%BA%8C%E5%88%86/" style="font-size: 12px; color: #999">二分</a> <a href="/tags/%E5%86%85%E5%AD%98%E8%99%9A%E6%8B%9F%E5%8C%96/" style="font-size: 12px; color: #999">内存虚拟化</a> <a href="/tags/%E5%88%9B%E5%BB%BA%E5%9E%8B/" style="font-size: 14px; color: #8895a2">创建型</a> <a href="/tags/%E5%8F%8C%E6%8C%87%E9%92%88/" style="font-size: 14px; color: #8895a2">双指针</a> <a href="/tags/%E5%A4%9A%E7%BA%BF%E7%A8%8B/" style="font-size: 24px; color: #3383cd">多线程</a></div></div></aside><main class="sidebar-translate" id="content"><div id="post"><article class="post-block" itemscope itemtype="https://schema.org/Article"><link itemprop="mainEntityOfPage" href="http://nichijou.cloud/2021/01/27/os/process_mlfq/"><span hidden itemprop="author" itemscope itemtype="https://schema.org/Person"><meta itemprop="name" content="z"><meta itemprop="description"></span><span hidden itemprop="publisher" itemscope itemtype="https://schema.org/Organization"><meta itemprop="name" content="日常"></span><header class="post-header"><h1 class="post-title" itemprop="name headline">进程调度策略-多级反馈队列<a class="post-edit-link" href="https://github.com/in-a-day/in-a-day.github.io/tree/hexo/source/_posts/os/process_mlfq.md" target="_blank" title="编辑" rel="noopener"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-edit-line"></use></svg></a></h1><div class="post-meta"><div class="post-time" style="display:inline-block"><span class="post-meta-item-icon"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-calendar-line"></use></svg></span> <time title="创建时间：2021-01-27 16:40:22" itemprop="dateCreated datePublished" datetime="2021-01-27T16:40:22+00:00">2021-01-27</time><span class="post-meta-divider">-</span><span class="post-meta-item-icon"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-calendar-2-line"></use></svg></span> <time title="修改时间：2021-06-03 09:28:35" itemprop="dateModified" datetime="2021-06-03T09:28:35+00:00">2021-06-03</time></div><div class="post-classify"><span class="post-category"> <span class="post-meta-item-icon" style="margin-right:3px;"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-folder-line"></use></svg></span><span itemprop="about" itemscope itemtype="https://schema.org/Thing"><a class="category" href="/categories/os/" style="--text-color:var(--hty-text-color)" itemprop="url" rel="index"><span itemprop="text">os</span></a></span></span><span class="post-tag"><span class="post-meta-divider">-</span><a class="tag" href="/tags/os/" style="--text-color:var(--hty-text-color)"><span class="post-meta-item-icon"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-price-tag-3-line"></use></svg></span><span class="tag-name">os</span></a><a class="tag" href="/tags/%E8%BF%9B%E7%A8%8B%E8%B0%83%E5%BA%A6/" style="--text-color:var(--hty-text-color)"><span class="post-meta-item-icon"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-price-tag-3-line"></use></svg></span><span class="tag-name">进程调度</span></a></span></div></div></header><section class="post-body" itemprop="articleBody"><div class="post-content markdown-body" style="--smc-primary:#0078E7;"><h2 id="MLFQ-多级反馈队列"><a href="#MLFQ-多级反馈队列" class="headerlink" title="MLFQ(多级反馈队列)"></a>MLFQ(多级反馈队列)</h2><blockquote>
+<p>Multi-level Feedback Queue, MLFQ使用历史预测未来</p>
+</blockquote>
+<p>MLFQ需要解决两方面的问题: </p>
+<ol>
+<li>优化周转时间, 通常OS并不知道一个任务的运行时间, 而SJF, STCF都是基于已知任务运行时间的策略.</li>
+<li>优化响应时间, RR响应时间较短, 但是周转时间比较长.</li>
+</ol>
+<h3 id="基础规则"><a href="#基础规则" class="headerlink" title="基础规则"></a>基础规则</h3><p>MLFQ拥有不同的队列, 每个队列都有不同的优先级. 在任意时间, 准备运行的任务在单独的队列中. MLFQ使用优先级决定将运行的任务.<br>一个队列中可能存在多个任务, 这些任务拥有相同的优先级, 在这种情况下我们使用round-robin调度策略.<br>综上, MLFQ基本规则:</p>
+<ul>
+<li>Rule1: If Priority(A) &gt; Priority(B), A runs.</li>
+<li>Rule2: If priority(A) = Priority(B), A &amp; B run in RR (<a href="/2021/01/27/os/process_schedule/" title="进程调度-基础">进程调度-基础</a>).</li>
+</ul>
+<p>MLFQ调度的关键在于如何设置优先级. MLFQ基于观察行为改变改变任务的优先级.MLFQ从任务运行历史中学习, 并根据历史预测任务的未来行为.</p>
+<h3 id="尝试1-如何修改优先级"><a href="#尝试1-如何修改优先级" class="headerlink" title="尝试1: 如何修改优先级"></a>尝试1: 如何修改优先级</h3><p>考虑系统中存在短时间运行的交互任务, 和长时间运行的cpu密集型(cpu-bound)任务. 尝试使用一下规则:</p>
+<ul>
+<li>Rule3: 每当有新任务到来, 将该任务置于最高优先级队列.</li>
+<li>Rule4a: 任务在运行期间用完了时间片, 减少该任务的优先级.</li>
+<li>Rule4b: 任务在时间片结束之前释放cpu, 保持该任务的优先级.</li>
+</ul>
+<p>存在的问题:</p>
+<ol>
+<li>如果存在大量交互式任务, 其他长时间运行的任务可能会处于饥饿状态.</li>
+<li>用户可以写出程序欺骗调度器, 从而一直获得cpu使用权. 在任务的时间片用完之前, 请求I/O操作从而释放CPU, 一直获取高的优先级.</li>
+<li>一个任务可能会一直改变其行为. cpu密集型的任务可能会转换成交互式的任务. 当前的策略无法使得这些任务与其他交互式任务一样.</li>
+</ol>
+<h3 id="尝试2-优先级提升"><a href="#尝试2-优先级提升" class="headerlink" title="尝试2: 优先级提升"></a>尝试2: 优先级提升</h3><p>比较简单的方法解决饥饿问题是: 周期性地提升系统所有任务的优先级. 有许多方法可以实现该目标, 这里只简单地将任务置于最高优先级队列中. 于是:</p>
+<ul>
+<li>Rule5: 经过某个周期S, 将系统中的所有任务移动到最高优先队列中.</li>
+</ul>
+<p>该规则解决了饥饿问题, 同时解决了cpu密集型任务转换成交互式任务的问题.</p>
+<h3 id="尝试3-更好的统计"><a href="#尝试3-更好的统计" class="headerlink" title="尝试3: 更好的统计"></a>尝试3: 更好的统计</h3><p>目标: 解决调度器欺骗问题.<br>引起该问题原因是Rule4a和4b, 该规则定义了任务在时间片用完前释放cpu保持任务的优先级.<br>为了解决该问题可以在MLFQ的每个层级都使用更好的统计cpu使用时间的方法. 调度器在每个层级都记录该层级任务的运行时间, 当任务在当前层级用完了分配的时间份额, 不管该任务是一次还是多次使用完该时间份额, 就降低该任务的优先级.<br>由此, 重写Rule4a,4b:</p>
+<ul>
+<li>Rule4: 一旦一个任务在指定层级用完了所拥有的时间份额(不管是否释放cpu), 就降低其优先级.</li>
+</ul>
+<h3 id="其他问题"><a href="#其他问题" class="headerlink" title="其他问题"></a>其他问题</h3><p>MLFQ重要的问题是如何参数化调度器.主要有一下几个问题:</p>
+<ol>
+<li>应该设置多少个队列</li>
+<li>每个队列的时间片长度是多少</li>
+<li>多久进行一次优先级的提升</li>
+</ol>
+<p>大多数的MLFQ变种都允许改变队列的时间片长度. 高优先级队列时间片长度较短, 低优先级队列时间片长度较长.  </p>
+<p>Solaris MLFQ实现提供了一些table配置进程优先级等信息(例如时间片长度, 提升任务优先级的时间).<br>FreeBSD调度器基于进程使用cpu的时长计算任务的优先级.<br>还有一些调度器将最高级队列用于操作系统工作, 用户任务只能使用其他优先级队列. 一些系统允许用户提供建议(advice)进行优先级设置, 例如: 通过<code>nice</code>命令行工具增加或减少任务优先级.</p>
+<h3 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h3><p>MLFQ: 拥有多级队列, 使用反馈(feedback)决定任务的优先级. 根据任务的运行历史决定任务的优先级.<br>MLFQ规则:</p>
+<ol>
+<li>如果A优先级 &gt; B优先级, A运行</li>
+<li>如果A优先级 == B优先级, 使用<code>round-robin</code>调度策略</li>
+<li>当一个任务进入系统, 将其置于最高优先级队列</li>
+<li>一个任务在指定层级中的时间片份额耗尽, 降低其优先级</li>
+<li>经过某个周期S, 将所有的任务都置于最高优先级队列</li>
+</ol>
+<p>MLFQ对于短时间运行的任务有着和<code>SJF/STCF</code>策略相似的性能. 对于长时间运行的cpu密集型任务, 有着公平的调度.<br>使用MLFQ的操作系统: BSD UNIX及其后代, Solaris, Windows NT及后续Windows操作系统.</p>
+</div><ul class="post-copyright"><li class="post-copyright-author"><strong>本文作者：</strong>z</li><li class="post-copyright-link"><strong>本文链接：</strong><a href="http://nichijou.cloud/2021/01/27/os/process_mlfq/" title="进程调度策略-多级反馈队列">http://nichijou.cloud/2021/01/27/os/process_mlfq/</a></li><li class="post-copyright-license"><strong>版权声明：</strong>本博客所有文章除特别声明外，均默认采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh" target="_blank" rel="noopener" title="CC BY-NC-SA 4.0 "><svg class="icon"><use xlink:href="#icon-creative-commons-line"></use></svg><svg class="icon"><use xlink:href="#icon-creative-commons-by-line"></use></svg><svg class="icon"><use xlink:href="#icon-creative-commons-nc-line"></use></svg><svg class="icon"><use xlink:href="#icon-creative-commons-sa-line"></use></svg></a> 许可协议。</li></ul></section></article><div class="post-nav"><div class="post-nav-item"><a class="post-nav-prev" href="/2021/02/01/algorithm/35_search_insert_position/" rel="prev" title="寻找插入位置"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-arrow-left-s-line"></use></svg><span class="post-nav-text">寻找插入位置</span></a></div><div class="post-nav-item"><a class="post-nav-next" href="/2021/01/27/os/process_schedule/" rel="next" title="进程调度-基础"><span class="post-nav-text">进程调度-基础</span><svg class="icon" aria-hidden="true"><use xlink:href="#icon-arrow-right-s-line"></use></svg></a></div></div></div></main><footer class="sidebar-translate" id="footer"><div class="copyright"><span>&copy; 2021 </span><span class="with-love" id="animate"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-cloud-line"></use></svg></span><span class="author"> z</span></div><div class="powered"><span>由 <a href="https://hexo.io" target="_blank" rel="noopener">Hexo</a> 驱动 v5.4.0</span><span class="footer-separator">|</span><span>主题 - <a rel="noopener" href="https://github.com/YunYouJun/hexo-theme-yun" target="_blank"><span>Yun</span></a> v1.4.0</span></div></footer><a class="hty-icon-button" id="goUp" aria-label="back-to-top" href="#"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-arrow-up-s-line"></use></svg><svg class="progress-circle-container" viewBox="0 0 100 100"><circle class="progress-circle" id="progressCircle" cx="50" cy="50" r="48" fill="none" stroke="#0078E7" stroke-width="2" stroke-linecap="round"></circle></svg></a><a class="popup-trigger hty-icon-button icon-search" id="search" href="javascript:;" title="搜索"><span class="site-state-item-icon"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-search-line"></use></svg></span></a><script>window.addEventListener("DOMContentLoaded", () => {
+  // Handle and trigger popup window
+  document.querySelector(".popup-trigger").addEventListener("click", () => {
+    document.querySelector(".popup").classList.add("show");
+    setTimeout(() => {
+      document.querySelector(".search-input").focus();
+    }, 100);
+  });
+
+  // Monitor main search box
+  const onPopupClose = () => {
+    document.querySelector(".popup").classList.remove("show");
+  };
+
+  document.querySelector(".popup-btn-close").addEventListener("click", () => {
+    onPopupClose();
+  });
+
+  window.addEventListener("keyup", event => {
+    if (event.key === "Escape") {
+      onPopupClose();
+    }
+  });
+});
+</script><script src="/js/search/local-search.js" defer></script><div class="popup search-popup"><div class="search-header"><span class="popup-btn-close close-icon hty-icon-button"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-close-line"></use></svg></span></div><div class="search-input-container"><input class="search-input" id="local-search-input" type="text" placeholder="搜索..." value=""></div><div id="local-search-result"></div></div></div></body></html>

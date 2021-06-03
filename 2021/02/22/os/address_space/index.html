@@ -1,0 +1,142 @@
+<!DOCTYPE html><html lang="zh-CN"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="theme-color" content="#0078E7"><meta name="author" content="z"><meta name="copyright" content="z"><meta name="generator" content="Hexo 5.4.0"><meta name="theme" content="hexo-theme-yun"><title>地址空间 | 日常</title><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@900&amp;display=swap" media="print" onload="this.media='all'"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/star-markdown-css@0.1.22/dist/yun/yun-markdown.min.css"><script src="//at.alicdn.com/t/font_1140697_ed8vp4atwoj.js" async></script><script src="https://cdn.jsdelivr.net/npm/scrollreveal/dist/scrollreveal.min.js" defer></script><script>document.addEventListener("DOMContentLoaded", () => {
+  [".post-card",".post-content img"].forEach((target)=> {
+    ScrollReveal().reveal(target);
+  })
+});
+</script><link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/katex@latest/dist/katex.min.css"><script defer src="https://cdn.jsdelivr.net/npm/katex@latest/dist/katex.min.js"></script><link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/katex@latest/dist/contrib/copy-tex.min.css"><script defer src="https://cdn.jsdelivr.net/npm/katex@latest/dist/contrib/copy-tex.min.js"></script><script defer src="https://cdn.jsdelivr.net/npm/katex@latest/dist/contrib/auto-render.min.js"></script><script>document.addEventListener("DOMContentLoaded", function() {
+  renderMathInElement(document.body, {
+    delimiters: [
+      {left: "$$", right: "$$", display: true},
+      {left: "$", right: "$", display: false},
+      {left: "\\(", right: "\\)", display: false},
+      {left: "\\[", right: "\\]", display: true}
+    ]
+  });
+});</script><link id="light-prism-css" rel="stylesheet" href="https://cdn.jsdelivr.net/npm/prismjs@1.20.0/themes/prism.css" media="(prefers-color-scheme: light)"><link id="dark-prism-css" rel="stylesheet" href="https://cdn.jsdelivr.net/npm/prismjs@1.20.0/themes/prism-tomorrow.css" media="(prefers-color-scheme: dark)"><link rel="shortcut icon" type="image/svg+xml" href="https://cdn.jsdelivr.net/gh/in-a-day/cdn@main/images/blog/favicon.ico"><link rel="mask-icon" href="https://cdn.jsdelivr.net/gh/in-a-day/cdn@main/images/blog/favicon.ico" color="#0078E7"><link rel="alternate icon" href="/yun.ico"><link rel="preload" href="/css/hexo-theme-yun.css" as="style"><link rel="preload" href="/js/utils.js" as="script"><link rel="preload" href="/js/hexo-theme-yun.js" as="script"><link rel="prefetch" href="/js/sidebar.js" as="script"><link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin><script id="yun-config">
+    const Yun = window.Yun || {};
+    window.CONFIG = {"hostname":"nichijou.cloud","root":"/","title":"日常","version":"1.4.0","mode":"light","copycode":true,"page":{"isPost":true},"anonymous_image":"https://cdn.jsdelivr.net/gh/YunYouJun/cdn/img/avatar/none.jpg","say":{"api":"/data/sentences.json"},"local_search":{"path":"/search.xml"}};
+  </script><link rel="stylesheet" href="/css/hexo-theme-yun.css"><script src="/js/utils.js"></script><script src="/js/hexo-theme-yun.js"></script><meta name="description" content="地址空间(address space) 物理内存抽象    虚拟化内存, 使得应用程序认为其加载到特定的内存地址, 并独享非常大的地址空间.   关键问题: 如何虚拟化内存?操作系统如何在单一的物理内存上为多个运行的进程构建一个私有的, 可能很大的地址空间抽象. 目标 透明, 程序不应该感知到内存被虚拟化的事实, 使其认为有独享的私有物理内存. 效率, 操作系统应该在时间和空间上追求尽可能的高效.">
+<meta property="og:type" content="article">
+<meta property="og:title" content="地址空间">
+<meta property="og:url" content="http://nichijou.cloud/2021/02/22/os/address_space/index.html">
+<meta property="og:site_name" content="日常">
+<meta property="og:description" content="地址空间(address space) 物理内存抽象    虚拟化内存, 使得应用程序认为其加载到特定的内存地址, 并独享非常大的地址空间.   关键问题: 如何虚拟化内存?操作系统如何在单一的物理内存上为多个运行的进程构建一个私有的, 可能很大的地址空间抽象. 目标 透明, 程序不应该感知到内存被虚拟化的事实, 使其认为有独享的私有物理内存. 效率, 操作系统应该在时间和空间上追求尽可能的高效.">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2021-02-22T11:02:46.000Z">
+<meta property="article:modified_time" content="2021-06-03T09:28:35.718Z">
+<meta property="article:author" content="z">
+<meta property="article:tag" content="os">
+<meta property="article:tag" content="内存虚拟化">
+<meta name="twitter:card" content="summary"></head><body><div class="container"><a class="sidebar-toggle hty-icon-button" id="menu-btn"><div class="hamburger hamburger--spin" type="button"><span class="hamburger-box"><span class="hamburger-inner"></span></span></div></a><div class="sidebar-toggle sidebar-overlay"></div><aside class="sidebar"><script src="/js/sidebar.js"></script><ul class="sidebar-nav"><li class="sidebar-nav-item sidebar-nav-toc hty-icon-button sidebar-nav-active" data-target="post-toc-wrap" title="文章目录"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-list-ordered"></use></svg></li><li class="sidebar-nav-item sidebar-nav-overview hty-icon-button" data-target="site-overview-wrap" title="站点概览"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-passport-line"></use></svg></li></ul><div class="sidebar-panel" id="site-overview-wrap"><div class="site-info fix-top"><a class="site-author-avatar" href="/about/" title="z"><img width="96" loading="lazy" src="https://cdn.jsdelivr.net/gh/in-a-day/cdn@main/images/blog/avatar.png" alt="z"></a><div class="site-author-name"><a href="/about/">z</a></div><a class="site-name" href="/about/site.html">日常</a><sub class="site-subtitle"></sub><div class="site-desciption"></div></div><nav class="site-state"><a class="site-state-item hty-icon-button icon-home" href="/" title="首页"><span class="site-state-item-icon"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-home-4-line"></use></svg></span></a><div class="site-state-item"><a href="/archives/" title="归档"><span class="site-state-item-icon"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-archive-line"></use></svg></span><span class="site-state-item-count">62</span></a></div><div class="site-state-item"><a href="/categories/" title="分类"><span class="site-state-item-icon"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-folder-2-line"></use></svg></span><span class="site-state-item-count">11</span></a></div><div class="site-state-item"><a href="/tags/" title="标签"><span class="site-state-item-icon"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-price-tag-3-line"></use></svg></span><span class="site-state-item-count">26</span></a></div><a class="site-state-item hty-icon-button" href="https://nichijou.cloud" title="文档"><span class="site-state-item-icon"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-settings-line"></use></svg></span></a></nav><hr style="margin-bottom:0.5rem"><div class="links-of-author"><a class="links-of-author-item hty-icon-button" rel="noopener" href="https://github.com/in-a-day" title="GitHub" target="_blank" style="color:#6e5494"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-github-line"></use></svg></a></div></div><div class="sidebar-panel sidebar-panel-active" id="post-toc-wrap"><div class="post-toc"><div class="post-toc-content"><ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%9C%B0%E5%9D%80%E7%A9%BA%E9%97%B4-address-space"><span class="toc-number">1.</span> <span class="toc-text">地址空间(address space)</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%85%B3%E9%94%AE%E9%97%AE%E9%A2%98-%E5%A6%82%E4%BD%95%E8%99%9A%E6%8B%9F%E5%8C%96%E5%86%85%E5%AD%98"><span class="toc-number">1.1.</span> <span class="toc-text">关键问题: 如何虚拟化内存?</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%9B%AE%E6%A0%87"><span class="toc-number">1.2.</span> <span class="toc-text">目标</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%9C%BA%E5%88%B6-%E5%9C%B0%E5%9D%80%E8%BD%AC%E6%8D%A2-address-translation"><span class="toc-number">2.</span> <span class="toc-text">机制: 地址转换(address translation)</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%8A%A8%E6%80%81-%E5%9F%BA%E4%BA%8E%E7%A1%AC%E4%BB%B6-%E9%87%8D%E5%AE%9A%E4%BD%8D-%E5%9F%BA%E5%9D%80%E7%95%8C%E9%99%90-base-and-bound"><span class="toc-number">2.1.</span> <span class="toc-text">动态(基于硬件)重定位: 基址界限(base and bound)</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#%E7%A1%AC%E4%BB%B6%E6%94%AF%E6%8C%81"><span class="toc-number">2.1.1.</span> <span class="toc-text">硬件支持</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F%E6%94%AF%E6%8C%81"><span class="toc-number">2.1.2.</span> <span class="toc-text">操作系统支持</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%88%86%E6%AE%B5"><span class="toc-number">2.2.</span> <span class="toc-text">分段</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#%E5%88%86%E6%AE%B5-%E6%B3%9B%E5%8C%96%E7%9A%84%E5%9F%BA%E5%9D%80-%E7%95%8C%E9%99%90"><span class="toc-number">2.2.1.</span> <span class="toc-text">分段: 泛化的基址&#x2F;界限</span></a></li></ol></li></ol></li></ol></div></div></div><div class="tag-cloud"><div class="tag-cloud-tags"><a href="/tags/OAuth2/" style="font-size: 14px; color: #8895a2">OAuth2</a> <a href="/tags/dp/" style="font-size: 12px; color: #999">dp</a> <a href="/tags/gof/" style="font-size: 20px; color: #558abc">gof</a> <a href="/tags/java/" style="font-size: 30px; color: #0078e7">java</a> <a href="/tags/java-base/" style="font-size: 12px; color: #999">java-base</a> <a href="/tags/jvm/" style="font-size: 16px; color: #7792aa">jvm</a> <a href="/tags/jwt/" style="font-size: 12px; color: #999">jwt</a> <a href="/tags/leetcode/" style="font-size: 28px; color: #117cde">leetcode</a> <a href="/tags/mysql/" style="font-size: 12px; color: #999">mysql</a> <a href="/tags/nichijou/" style="font-size: 18px; color: #668eb3">nichijou</a> <a href="/tags/os/" style="font-size: 18px; color: #668eb3">os</a> <a href="/tags/redis/" style="font-size: 12px; color: #999">redis</a> <a href="/tags/spring/" style="font-size: 26px; color: #227fd6">spring</a> <a href="/tags/spring-security/" style="font-size: 22px; color: #4487c4">spring security</a> <a href="/tags/tree/" style="font-size: 12px; color: #999">tree</a> <a href="/tags/%E4%BA%8C%E5%88%86/" style="font-size: 12px; color: #999">二分</a> <a href="/tags/%E5%86%85%E5%AD%98%E8%99%9A%E6%8B%9F%E5%8C%96/" style="font-size: 12px; color: #999">内存虚拟化</a> <a href="/tags/%E5%88%9B%E5%BB%BA%E5%9E%8B/" style="font-size: 14px; color: #8895a2">创建型</a> <a href="/tags/%E5%8F%8C%E6%8C%87%E9%92%88/" style="font-size: 14px; color: #8895a2">双指针</a> <a href="/tags/%E5%A4%9A%E7%BA%BF%E7%A8%8B/" style="font-size: 24px; color: #3383cd">多线程</a></div></div></aside><main class="sidebar-translate" id="content"><div id="post"><article class="post-block" itemscope itemtype="https://schema.org/Article"><link itemprop="mainEntityOfPage" href="http://nichijou.cloud/2021/02/22/os/address_space/"><span hidden itemprop="author" itemscope itemtype="https://schema.org/Person"><meta itemprop="name" content="z"><meta itemprop="description"></span><span hidden itemprop="publisher" itemscope itemtype="https://schema.org/Organization"><meta itemprop="name" content="日常"></span><header class="post-header"><h1 class="post-title" itemprop="name headline">地址空间<a class="post-edit-link" href="https://github.com/in-a-day/in-a-day.github.io/tree/hexo/source/_posts/os/address_space.md" target="_blank" title="编辑" rel="noopener"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-edit-line"></use></svg></a></h1><div class="post-meta"><div class="post-time" style="display:inline-block"><span class="post-meta-item-icon"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-calendar-line"></use></svg></span> <time title="创建时间：2021-02-22 11:02:46" itemprop="dateCreated datePublished" datetime="2021-02-22T11:02:46+00:00">2021-02-22</time><span class="post-meta-divider">-</span><span class="post-meta-item-icon"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-calendar-2-line"></use></svg></span> <time title="修改时间：2021-06-03 09:28:35" itemprop="dateModified" datetime="2021-06-03T09:28:35+00:00">2021-06-03</time></div><div class="post-classify"><span class="post-category"> <span class="post-meta-item-icon" style="margin-right:3px;"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-folder-line"></use></svg></span><span itemprop="about" itemscope itemtype="https://schema.org/Thing"><a class="category" href="/categories/os/" style="--text-color:var(--hty-text-color)" itemprop="url" rel="index"><span itemprop="text">os</span></a></span></span><span class="post-tag"><span class="post-meta-divider">-</span><a class="tag" href="/tags/os/" style="--text-color:var(--hty-text-color)"><span class="post-meta-item-icon"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-price-tag-3-line"></use></svg></span><span class="tag-name">os</span></a><a class="tag" href="/tags/%E5%86%85%E5%AD%98%E8%99%9A%E6%8B%9F%E5%8C%96/" style="--text-color:var(--hty-text-color)"><span class="post-meta-item-icon"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-price-tag-3-line"></use></svg></span><span class="tag-name">内存虚拟化</span></a></span></div></div></header><section class="post-body" itemprop="articleBody"><div class="post-content markdown-body" style="--smc-primary:#0078E7;"><h2 id="地址空间-address-space"><a href="#地址空间-address-space" class="headerlink" title="地址空间(address space)"></a>地址空间(address space)</h2><blockquote>
+<p>物理内存抽象  </p>
+</blockquote>
+<p>虚拟化内存, 使得应用程序认为其加载到特定的内存地址, 并独享非常大的地址空间.  </p>
+<h3 id="关键问题-如何虚拟化内存"><a href="#关键问题-如何虚拟化内存" class="headerlink" title="关键问题: 如何虚拟化内存?"></a>关键问题: 如何虚拟化内存?</h3><pre class="line-numbers language-none"><code class="language-none">操作系统如何在单一的物理内存上为多个运行的进程构建一个私有的, 可能很大的地址空间抽象.<span aria-hidden="true" class="line-numbers-rows"><span></span></span></code></pre>
+<h3 id="目标"><a href="#目标" class="headerlink" title="目标"></a>目标</h3><ol>
+<li>透明, 程序不应该感知到内存被虚拟化的事实, 使其认为有独享的私有物理内存.</li>
+<li>效率, 操作系统应该在时间和空间上追求尽可能的高效. 为了实现高效, 通常需要硬件功能的支持(例如TLB).</li>
+<li>保护, 操作系统要确保进程受到保护, 不会受其他进程影响, 操作系统也不会受进程影响. 一个进程不应该访问其本身以外的内存地址空间. 保护为进程提供了隔离性, 每个进程都在自己独立的环境中运行, 避免其他出错或恶意进程的影响.</li>
+</ol>
+<h2 id="机制-地址转换-address-translation"><a href="#机制-地址转换-address-translation" class="headerlink" title="机制: 地址转换(address translation)"></a>机制: 地址转换(address translation)</h2><blockquote>
+<p>将虚拟地址转换为物理地址.  </p>
+</blockquote>
+<p>实现cpu虚拟化时, 我们遵循了受限直接访问(Limited Direct Execution, LDE). LDE的基本思想是: 允许程序运行大部分指令直接访问硬件, 只在一些关键点(如进程发生系统调用或发生时钟中断), 由操作系统接入来确保”在正确的时间, 正确的地点, 做正确的事情”. 为了实现高效的虚拟化, 操作系统尽量让程序自己运行, 同时通过在关键点的及时介入(interposing), 来保持对硬件的控制. 高效和控制是现代操作系统的两个主要的目标.</p>
+<p>实现虚拟内存时, 也使用相似的策略, 在实现高效和控制的同时, 提供期望的虚拟化. 高效决定了需要硬件的支持, 一些简单的寄存器, TLB, 页表等. 控制表示操作系统确保应用程序只能访问他自己的内存空间. 同时还需要确保灵活性, 期望程序能以任何方式访问他自己的地址空间.</p>
+<pre class="line-numbers language-none"><code class="language-none">关键问题: 高效,灵活地虚拟化内存
+如何高效实现内存虚拟化? 如何提供应用程序所需的灵活性? 如何控制应用程序可访问的内存位置, 从而确保程序的内存访问受到合理的限制? 如何高效的实现这一切?<span aria-hidden="true" class="line-numbers-rows"><span></span><span></span></span></code></pre>
+
+<h3 id="动态-基于硬件-重定位-基址界限-base-and-bound"><a href="#动态-基于硬件-重定位-基址界限-base-and-bound" class="headerlink" title="动态(基于硬件)重定位: 基址界限(base and bound)"></a>动态(基于硬件)重定位: 基址界限(base and bound)</h3><p>cpu 需要两个寄存器: 基址寄存器和界限寄存器. 进程使用的地址都是虚拟地址, 为了得到物理内存地址, 需要加上base寄存器内容:<br>$$ physical \ address = virtual \ address + base $$</p>
+<p>如果内存超过bound界限则抛出异常. 有两种方式检查(逻辑上是等价的):</p>
+<ol>
+<li>在虚拟地址和基址寄存器内容求和之前检查.</li>
+<li>虚拟地址和基址寄存器求和之后检查.</li>
+</ol>
+<p>由于地址重定位发生于运行时, 也称为动态重定位.</p>
+<p>base和bound寄存器是芯片中的硬件结构, 每个cpu中存在一对. 也将cpu中负责内存地址转换的部分称为Memory management unit(MMU, 内存管理单元).   </p>
+<h4 id="硬件支持"><a href="#硬件支持" class="headerlink" title="硬件支持"></a>硬件支持</h4><ol>
+<li>与cpu虚拟化相同, 我们需要两种cpu模式. 特权模式(privileged mode, 也成内核模式, kernel mode), 可以访问整个机器资源. 用户模式(user mode), 只能做有限的操作.  </li>
+<li>硬件必须提供基址和界限寄存器(base and bounds register), 因此每个cpu的内存管理单元都需要这两个额外的寄存器. 硬件必须能检查地址是否可用, 通过界限寄存器和cpu的一些电路实现.  </li>
+<li>硬件还需提供一些特殊的指令, 用于修改基址寄存器和界限寄存器, 允许操作系统在切换进程时改变他们. 这些指令是特权指令, 只有在内核模式下使用.</li>
+<li>最后, 用户程序试图非法访问内存(越界访问时), cpu必须能够产生异常.同时安排操作系统进行异常处理. cpu需要提供方法通知处理异常程序的位置, 因此需要另外的一些特权指令.</li>
+</ol>
+<table>
+<thead>
+<tr>
+<th>硬件要求</th>
+<th>解释</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>特权模式</td>
+<td>以防用户模式的进程执行特权操作</td>
+</tr>
+<tr>
+<td>基址/界限寄存器</td>
+<td>每个cpu需要一堆寄存器支持地址转换和界限检查</td>
+</tr>
+<tr>
+<td>修改基址/界限寄存器的特权指令</td>
+<td>用户程序运行前, 操作系统需要设置这些值</td>
+</tr>
+<tr>
+<td>注册异常处理的特权指令</td>
+<td>操作系统需通知硬件发生异常执行的代码</td>
+</tr>
+<tr>
+<td>能够触发异常</td>
+<td>进程试图使用特权指令或越界的内存</td>
+</tr>
+</tbody></table>
+<h4 id="操作系统支持"><a href="#操作系统支持" class="headerlink" title="操作系统支持"></a>操作系统支持</h4><ol>
+<li>进程创建时, 操作系统必须为进程的地址空间寻找合适的物理内存空间. 假设鼎城的地址空间小于物理内存,且大小相同. 操作系统可将物理内存看成一组槽块, 标记空间或已用. 当创建新进程时, 查找该数据结构(常称空闲列表, free list), 为新地址空间查找位置.</li>
+<li>进程终止时, 操作系统应该回收其所有内存. 将内存放回空闲列表, 并根据需求清除相关的数据结构.</li>
+<li>上下文切换时, 由于每个cpu只有同一个基址寄存器和一个界限寄存器. 对于每个进程来说, 他们的值都不相同, 操作系统必须保存和恢复基址和界限寄存器. 所以当操作系统决定中止当前进程时, 需要将当前的基址和界限寄存器保存在内存中, 放入每个进程都有的结构中, 例如进程控制块(PCB). 操作系统恢复执行(或首次)进程时, 也必须给基址和界限寄存器设置正确的值.</li>
+</ol>
+<table>
+<thead>
+<tr>
+<th>操作系统要求</th>
+<th>解释</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>内存管理</td>
+<td>新进程分配内存  终止进程回收内存  通常通过空闲列表管理</td>
+</tr>
+<tr>
+<td>基址/界限管理</td>
+<td>上线文切换时正确设置基址/界限寄存器</td>
+</tr>
+<tr>
+<td>异常处理</td>
+<td>异常发生时执行的代码</td>
+</tr>
+</tbody></table>
+<h3 id="分段"><a href="#分段" class="headerlink" title="分段"></a>分段</h3><p>基址界限寄存器, 会导致有一大块的空闲空间.</p>
+<pre class="line-numbers language-none"><code class="language-none">关键问题: 怎样支持大地址空间
+如何支持大地址空间, 同时栈和堆之间有大量的空闲空间?<span aria-hidden="true" class="line-numbers-rows"><span></span><span></span></span></code></pre>
+<h4 id="分段-泛化的基址-界限"><a href="#分段-泛化的基址-界限" class="headerlink" title="分段: 泛化的基址/界限"></a>分段: 泛化的基址/界限</h4></div><ul class="post-copyright"><li class="post-copyright-author"><strong>本文作者：</strong>z</li><li class="post-copyright-link"><strong>本文链接：</strong><a href="http://nichijou.cloud/2021/02/22/os/address_space/" title="地址空间">http://nichijou.cloud/2021/02/22/os/address_space/</a></li><li class="post-copyright-license"><strong>版权声明：</strong>本博客所有文章除特别声明外，均默认采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh" target="_blank" rel="noopener" title="CC BY-NC-SA 4.0 "><svg class="icon"><use xlink:href="#icon-creative-commons-line"></use></svg><svg class="icon"><use xlink:href="#icon-creative-commons-by-line"></use></svg><svg class="icon"><use xlink:href="#icon-creative-commons-nc-line"></use></svg><svg class="icon"><use xlink:href="#icon-creative-commons-sa-line"></use></svg></a> 许可协议。</li></ul></section></article><div class="post-nav"><div class="post-nav-item"><a class="post-nav-prev" href="/2021/02/22/java/concurrent/thread_base/" rel="prev" title="多线程基础"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-arrow-left-s-line"></use></svg><span class="post-nav-text">多线程基础</span></a></div><div class="post-nav-item"><a class="post-nav-next" href="/2021/02/20/algorithm/349_intersection_of_two_arrays/" rel="next" title="两个数组的交集"><span class="post-nav-text">两个数组的交集</span><svg class="icon" aria-hidden="true"><use xlink:href="#icon-arrow-right-s-line"></use></svg></a></div></div></div></main><footer class="sidebar-translate" id="footer"><div class="copyright"><span>&copy; 2021 </span><span class="with-love" id="animate"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-cloud-line"></use></svg></span><span class="author"> z</span></div><div class="powered"><span>由 <a href="https://hexo.io" target="_blank" rel="noopener">Hexo</a> 驱动 v5.4.0</span><span class="footer-separator">|</span><span>主题 - <a rel="noopener" href="https://github.com/YunYouJun/hexo-theme-yun" target="_blank"><span>Yun</span></a> v1.4.0</span></div></footer><a class="hty-icon-button" id="goUp" aria-label="back-to-top" href="#"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-arrow-up-s-line"></use></svg><svg class="progress-circle-container" viewBox="0 0 100 100"><circle class="progress-circle" id="progressCircle" cx="50" cy="50" r="48" fill="none" stroke="#0078E7" stroke-width="2" stroke-linecap="round"></circle></svg></a><a class="popup-trigger hty-icon-button icon-search" id="search" href="javascript:;" title="搜索"><span class="site-state-item-icon"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-search-line"></use></svg></span></a><script>window.addEventListener("DOMContentLoaded", () => {
+  // Handle and trigger popup window
+  document.querySelector(".popup-trigger").addEventListener("click", () => {
+    document.querySelector(".popup").classList.add("show");
+    setTimeout(() => {
+      document.querySelector(".search-input").focus();
+    }, 100);
+  });
+
+  // Monitor main search box
+  const onPopupClose = () => {
+    document.querySelector(".popup").classList.remove("show");
+  };
+
+  document.querySelector(".popup-btn-close").addEventListener("click", () => {
+    onPopupClose();
+  });
+
+  window.addEventListener("keyup", event => {
+    if (event.key === "Escape") {
+      onPopupClose();
+    }
+  });
+});
+</script><script src="/js/search/local-search.js" defer></script><div class="popup search-popup"><div class="search-header"><span class="popup-btn-close close-icon hty-icon-button"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-close-line"></use></svg></span></div><div class="search-input-container"><input class="search-input" id="local-search-input" type="text" placeholder="搜索..." value=""></div><div id="local-search-result"></div></div></div></body></html>

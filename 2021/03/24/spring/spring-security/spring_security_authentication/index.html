@@ -1,0 +1,449 @@
+<!DOCTYPE html><html lang="zh-CN"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="theme-color" content="#0078E7"><meta name="author" content="z"><meta name="copyright" content="z"><meta name="generator" content="Hexo 5.4.0"><meta name="theme" content="hexo-theme-yun"><title>Spring Security Authentication(认证)(5.4.5) | 日常</title><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@900&amp;display=swap" media="print" onload="this.media='all'"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/star-markdown-css@0.1.22/dist/yun/yun-markdown.min.css"><script src="//at.alicdn.com/t/font_1140697_ed8vp4atwoj.js" async></script><script src="https://cdn.jsdelivr.net/npm/scrollreveal/dist/scrollreveal.min.js" defer></script><script>document.addEventListener("DOMContentLoaded", () => {
+  [".post-card",".post-content img"].forEach((target)=> {
+    ScrollReveal().reveal(target);
+  })
+});
+</script><link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/katex@latest/dist/katex.min.css"><script defer src="https://cdn.jsdelivr.net/npm/katex@latest/dist/katex.min.js"></script><link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/katex@latest/dist/contrib/copy-tex.min.css"><script defer src="https://cdn.jsdelivr.net/npm/katex@latest/dist/contrib/copy-tex.min.js"></script><script defer src="https://cdn.jsdelivr.net/npm/katex@latest/dist/contrib/auto-render.min.js"></script><script>document.addEventListener("DOMContentLoaded", function() {
+  renderMathInElement(document.body, {
+    delimiters: [
+      {left: "$$", right: "$$", display: true},
+      {left: "$", right: "$", display: false},
+      {left: "\\(", right: "\\)", display: false},
+      {left: "\\[", right: "\\]", display: true}
+    ]
+  });
+});</script><link id="light-prism-css" rel="stylesheet" href="https://cdn.jsdelivr.net/npm/prismjs@1.20.0/themes/prism.css" media="(prefers-color-scheme: light)"><link id="dark-prism-css" rel="stylesheet" href="https://cdn.jsdelivr.net/npm/prismjs@1.20.0/themes/prism-tomorrow.css" media="(prefers-color-scheme: dark)"><link rel="shortcut icon" type="image/svg+xml" href="https://cdn.jsdelivr.net/gh/in-a-day/cdn@main/images/blog/favicon.ico"><link rel="mask-icon" href="https://cdn.jsdelivr.net/gh/in-a-day/cdn@main/images/blog/favicon.ico" color="#0078E7"><link rel="alternate icon" href="/yun.ico"><link rel="preload" href="/css/hexo-theme-yun.css" as="style"><link rel="preload" href="/js/utils.js" as="script"><link rel="preload" href="/js/hexo-theme-yun.js" as="script"><link rel="prefetch" href="/js/sidebar.js" as="script"><link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin><script id="yun-config">
+    const Yun = window.Yun || {};
+    window.CONFIG = {"hostname":"nichijou.cloud","root":"/","title":"日常","version":"1.4.0","mode":"light","copycode":true,"page":{"isPost":true},"anonymous_image":"https://cdn.jsdelivr.net/gh/YunYouJun/cdn/img/avatar/none.jpg","say":{"api":"/data/sentences.json"},"local_search":{"path":"/search.xml"}};
+  </script><link rel="stylesheet" href="/css/hexo-theme-yun.css"><script src="/js/utils.js"></script><script src="/js/hexo-theme-yun.js"></script><meta name="description" content="Spring Security为认证提供了全面的支持. 接下来从这两个方面进行介绍: 架构组件(Architecture Components)主要描述Spring Security用于Servlet认证中的架构组件. 主要有以下组件:  SecurityContextHolder: 存储身份验证详细信息的地方. SecurityContext: 由SecurityContextHolder获得,">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Spring Security Authentication(认证)(5.4.5)">
+<meta property="og:url" content="http://nichijou.cloud/2021/03/24/spring/spring-security/spring_security_authentication/index.html">
+<meta property="og:site_name" content="日常">
+<meta property="og:description" content="Spring Security为认证提供了全面的支持. 接下来从这两个方面进行介绍: 架构组件(Architecture Components)主要描述Spring Security用于Servlet认证中的架构组件. 主要有以下组件:  SecurityContextHolder: 存储身份验证详细信息的地方. SecurityContext: 由SecurityContextHolder获得,">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://cdn.jsdelivr.net/gh/in-a-day/cdn@main/images/java/spring/spring-security/securitycontextholder.png">
+<meta property="og:image" content="https://cdn.jsdelivr.net/gh/in-a-day/cdn@main/images/java/spring/spring-security/providermanager.png">
+<meta property="og:image" content="https://cdn.jsdelivr.net/gh/in-a-day/cdn@main/images/java/spring/spring-security/providermanager-parent.png">
+<meta property="og:image" content="https://cdn.jsdelivr.net/gh/in-a-day/cdn@main/images/java/spring/spring-security/providermanagers-parent.png">
+<meta property="og:image" content="https://cdn.jsdelivr.net/gh/in-a-day/cdn@main/images/java/spring/spring-security/abstractauthenticationprocessingfilter.png">
+<meta property="article:published_time" content="2021-03-24T23:08:00.000Z">
+<meta property="article:modified_time" content="2021-06-03T09:28:35.718Z">
+<meta property="article:author" content="z">
+<meta property="article:tag" content="java">
+<meta property="article:tag" content="spring">
+<meta property="article:tag" content="spring security">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://cdn.jsdelivr.net/gh/in-a-day/cdn@main/images/java/spring/spring-security/securitycontextholder.png"></head><body><div class="container"><a class="sidebar-toggle hty-icon-button" id="menu-btn"><div class="hamburger hamburger--spin" type="button"><span class="hamburger-box"><span class="hamburger-inner"></span></span></div></a><div class="sidebar-toggle sidebar-overlay"></div><aside class="sidebar"><script src="/js/sidebar.js"></script><ul class="sidebar-nav"><li class="sidebar-nav-item sidebar-nav-toc hty-icon-button sidebar-nav-active" data-target="post-toc-wrap" title="文章目录"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-list-ordered"></use></svg></li><li class="sidebar-nav-item sidebar-nav-overview hty-icon-button" data-target="site-overview-wrap" title="站点概览"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-passport-line"></use></svg></li></ul><div class="sidebar-panel" id="site-overview-wrap"><div class="site-info fix-top"><a class="site-author-avatar" href="/about/" title="z"><img width="96" loading="lazy" src="https://cdn.jsdelivr.net/gh/in-a-day/cdn@main/images/blog/avatar.png" alt="z"></a><div class="site-author-name"><a href="/about/">z</a></div><a class="site-name" href="/about/site.html">日常</a><sub class="site-subtitle"></sub><div class="site-desciption"></div></div><nav class="site-state"><a class="site-state-item hty-icon-button icon-home" href="/" title="首页"><span class="site-state-item-icon"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-home-4-line"></use></svg></span></a><div class="site-state-item"><a href="/archives/" title="归档"><span class="site-state-item-icon"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-archive-line"></use></svg></span><span class="site-state-item-count">62</span></a></div><div class="site-state-item"><a href="/categories/" title="分类"><span class="site-state-item-icon"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-folder-2-line"></use></svg></span><span class="site-state-item-count">11</span></a></div><div class="site-state-item"><a href="/tags/" title="标签"><span class="site-state-item-icon"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-price-tag-3-line"></use></svg></span><span class="site-state-item-count">26</span></a></div><a class="site-state-item hty-icon-button" href="https://nichijou.cloud" title="文档"><span class="site-state-item-icon"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-settings-line"></use></svg></span></a></nav><hr style="margin-bottom:0.5rem"><div class="links-of-author"><a class="links-of-author-item hty-icon-button" rel="noopener" href="https://github.com/in-a-day" title="GitHub" target="_blank" style="color:#6e5494"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-github-line"></use></svg></a></div></div><div class="sidebar-panel sidebar-panel-active" id="post-toc-wrap"><div class="post-toc"><div class="post-toc-content"><ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%9E%B6%E6%9E%84%E7%BB%84%E4%BB%B6-Architecture-Components"><span class="toc-number">1.</span> <span class="toc-text">架构组件(Architecture Components)</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E8%AE%A4%E8%AF%81%E6%9C%BA%E5%88%B6-Authentication-Mechanisms"><span class="toc-number">2.</span> <span class="toc-text">认证机制(Authentication Mechanisms)</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#SecurityContextHolder"><span class="toc-number">3.</span> <span class="toc-text">SecurityContextHolder</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#SecurityContext"><span class="toc-number">4.</span> <span class="toc-text">SecurityContext</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#Authentication"><span class="toc-number">5.</span> <span class="toc-text">Authentication</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#GrantedAuthority"><span class="toc-number">6.</span> <span class="toc-text">GrantedAuthority</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#AuthenticationManager"><span class="toc-number">7.</span> <span class="toc-text">AuthenticationManager</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#ProviderManager"><span class="toc-number">8.</span> <span class="toc-text">ProviderManager</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#AuthenticationProvider"><span class="toc-number">9.</span> <span class="toc-text">AuthenticationProvider</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BD%BF%E7%94%A8AuthenticationEntryPoint%E8%AF%B7%E6%B1%82%E5%87%AD%E8%AF%81"><span class="toc-number">10.</span> <span class="toc-text">使用AuthenticationEntryPoint请求凭证</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#AbstractAuthenticationProcessingFilter"><span class="toc-number">11.</span> <span class="toc-text">AbstractAuthenticationProcessingFilter</span></a></li></ol></div></div></div><div class="tag-cloud"><div class="tag-cloud-tags"><a href="/tags/OAuth2/" style="font-size: 14px; color: #8895a2">OAuth2</a> <a href="/tags/dp/" style="font-size: 12px; color: #999">dp</a> <a href="/tags/gof/" style="font-size: 20px; color: #558abc">gof</a> <a href="/tags/java/" style="font-size: 30px; color: #0078e7">java</a> <a href="/tags/java-base/" style="font-size: 12px; color: #999">java-base</a> <a href="/tags/jvm/" style="font-size: 16px; color: #7792aa">jvm</a> <a href="/tags/jwt/" style="font-size: 12px; color: #999">jwt</a> <a href="/tags/leetcode/" style="font-size: 28px; color: #117cde">leetcode</a> <a href="/tags/mysql/" style="font-size: 12px; color: #999">mysql</a> <a href="/tags/nichijou/" style="font-size: 18px; color: #668eb3">nichijou</a> <a href="/tags/os/" style="font-size: 18px; color: #668eb3">os</a> <a href="/tags/redis/" style="font-size: 12px; color: #999">redis</a> <a href="/tags/spring/" style="font-size: 26px; color: #227fd6">spring</a> <a href="/tags/spring-security/" style="font-size: 22px; color: #4487c4">spring security</a> <a href="/tags/tree/" style="font-size: 12px; color: #999">tree</a> <a href="/tags/%E4%BA%8C%E5%88%86/" style="font-size: 12px; color: #999">二分</a> <a href="/tags/%E5%86%85%E5%AD%98%E8%99%9A%E6%8B%9F%E5%8C%96/" style="font-size: 12px; color: #999">内存虚拟化</a> <a href="/tags/%E5%88%9B%E5%BB%BA%E5%9E%8B/" style="font-size: 14px; color: #8895a2">创建型</a> <a href="/tags/%E5%8F%8C%E6%8C%87%E9%92%88/" style="font-size: 14px; color: #8895a2">双指针</a> <a href="/tags/%E5%A4%9A%E7%BA%BF%E7%A8%8B/" style="font-size: 24px; color: #3383cd">多线程</a></div></div></aside><main class="sidebar-translate" id="content"><div id="post"><article class="post-block" itemscope itemtype="https://schema.org/Article"><link itemprop="mainEntityOfPage" href="http://nichijou.cloud/2021/03/24/spring/spring-security/spring_security_authentication/"><span hidden itemprop="author" itemscope itemtype="https://schema.org/Person"><meta itemprop="name" content="z"><meta itemprop="description"></span><span hidden itemprop="publisher" itemscope itemtype="https://schema.org/Organization"><meta itemprop="name" content="日常"></span><header class="post-header"><h1 class="post-title" itemprop="name headline">Spring Security Authentication(认证)(5.4.5)<a class="post-edit-link" href="https://github.com/in-a-day/in-a-day.github.io/tree/hexo/source/_posts/spring/spring-security/spring_security_authentication.md" target="_blank" title="编辑" rel="noopener"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-edit-line"></use></svg></a></h1><div class="post-meta"><div class="post-time" style="display:inline-block"><span class="post-meta-item-icon"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-calendar-line"></use></svg></span> <time title="创建时间：2021-03-24 23:08:00" itemprop="dateCreated datePublished" datetime="2021-03-24T23:08:00+00:00">2021-03-24</time><span class="post-meta-divider">-</span><span class="post-meta-item-icon"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-calendar-2-line"></use></svg></span> <time title="修改时间：2021-06-03 09:28:35" itemprop="dateModified" datetime="2021-06-03T09:28:35+00:00">2021-06-03</time></div><div class="post-classify"><span class="post-category"> <span class="post-meta-item-icon" style="margin-right:3px;"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-folder-line"></use></svg></span><span itemprop="about" itemscope itemtype="https://schema.org/Thing"><a class="category" href="/categories/spring/" style="--text-color:var(--hty-text-color)" itemprop="url" rel="index"><span itemprop="text">spring</span></a></span></span><span class="post-tag"><span class="post-meta-divider">-</span><a class="tag" href="/tags/java/" style="--text-color:crimson"><span class="post-meta-item-icon"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-price-tag-3-line"></use></svg></span><span class="tag-name">java</span></a><a class="tag" href="/tags/spring/" style="--text-color:orange"><span class="post-meta-item-icon"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-price-tag-3-line"></use></svg></span><span class="tag-name">spring</span></a><a class="tag" href="/tags/spring-security/" style="--text-color:var(--hty-text-color)"><span class="post-meta-item-icon"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-price-tag-3-line"></use></svg></span><span class="tag-name">spring security</span></a></span></div></div></header><section class="post-body" itemprop="articleBody"><div class="post-content markdown-body" style="--smc-primary:#0078E7;"><p>Spring Security为认证提供了全面的支持. 接下来从这两个方面进行介绍:</p>
+<h2 id="架构组件-Architecture-Components"><a href="#架构组件-Architecture-Components" class="headerlink" title="架构组件(Architecture Components)"></a><strong>架构组件(Architecture Components)</strong></h2><p>主要描述Spring Security用于Servlet认证中的架构组件. 主要有以下组件:</p>
+<ul>
+<li><code>SecurityContextHolder</code>: 存储身份验证详细信息的地方.</li>
+<li><code>SecurityContext</code>: 由<code>SecurityContextHolder</code>获得,包含了当前认证客户的<code>Authentication</code>.</li>
+<li><code>Authentication</code>: 可以是<code>AuthenticationManager</code>的输入, 以提供用户提供的用于身份验证的凭据或来自SecurityContext的当前用户.</li>
+<li><code>GrantedAuthority</code>: 授予身份验证主体的权限(即角色, 范围等).</li>
+<li><code>AuthenticationManager</code>: 定义了Spring Security的Filters如何进行认证的API.</li>
+<li><code>ProviderManager</code>: <code>AuthenticationManager</code>的一个通用实现.</li>
+<li><code>Request Credentails with AuthenticationEntryPoint</code>: 用于从客户端请求凭证(即重定向到登录页面, 发送WWW-Authenticate响应等).</li>
+<li><code>AbstractAuthenticationProcessingFilter</code>: 用于认证的基础Filter. 这样为高级别的身份认证流程和各个部件如何协同工作提供了一个好的概念.</li>
+</ul>
+<h2 id="认证机制-Authentication-Mechanisms"><a href="#认证机制-Authentication-Mechanisms" class="headerlink" title="认证机制(Authentication Mechanisms)"></a><strong>认证机制(Authentication Mechanisms)</strong></h2><ul>
+<li>Username and Password - 如何使用用户名密码认证</li>
+<li>OAuth 2.0 Login - OAhth 2.0 使用OpenID Connect登录和非标准的OAuth 2.0 登录(即GitHub)</li>
+<li>SAML 2.0 Login - SAML 2.0 登录</li>
+<li>Central Authentication Server (CAS) - CAS支持</li>
+<li>Remember Me - 如何记住用户</li>
+<li>JAAS Authentication - JAAS认证</li>
+<li>OpenID - OpenID 认证 (不要与OpenID Connect弄混)</li>
+<li>Pre-Authentication Scenarios - 使用外部机制进行认证(e.g. SiteMider或J2EE security), 但仍使用Spring Security授权和防范常见漏洞攻击.</li>
+<li>X509 Authentication - X509 认证</li>
+</ul>
+<h2 id="SecurityContextHolder"><a href="#SecurityContextHolder" class="headerlink" title="SecurityContextHolder"></a><strong>SecurityContextHolder</strong></h2><p><code>SecurityContextHolder</code>是Spring Security认证模型的核心. 它包含了<code>SecurityContext</code>.<br><img src="https://cdn.jsdelivr.net/gh/in-a-day/cdn@main/images/java/spring/spring-security/securitycontextholder.png" alt="SecurityContextHolder" loading="lazy"><em>SecurityContextHolder</em><br>上图可以看出, <code>SecurityContextHolder</code>中包含了<code>SecurityContext</code>, <code>SecurityContext</code>中包含了<code>Authentication</code>, <code>Authentication</code>中包含了<code>Principal, Credentials, Authorities</code>.</p>
+<p><code>SecurityContextHolder</code>存储了身份认证的详细信息. Spring Security不关心<code>SecurityContextHolder</code>是如何填充的. 如果他包含了值, 就将它当做当前认证的用户.</p>
+<p>表示客户已经通过认证的最简单的方式是直接设置<code>SecurityContextHolder</code>. 下面展示了如何使用:</p>
+<pre class="line-numbers language-java" data-language="java"><code class="language-java"><span class="token class-name">SecurityContext</span> context <span class="token operator">=</span> <span class="token class-name">SecurityContextHolder</span><span class="token punctuation">.</span><span class="token function">createEmptyContext</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>  <span class="token comment">// 1</span>
+<span class="token class-name">Authentication</span> authentication <span class="token operator">=</span> <span class="token keyword">new</span> <span class="token class-name">TestingAuthenticationToken</span><span class="token punctuation">(</span><span class="token string">"name"</span><span class="token punctuation">,</span> <span class="token string">"pwd"</span><span class="token punctuation">,</span> <span class="token string">"ROLE_USER"</span><span class="token punctuation">)</span><span class="token punctuation">;</span>  <span class="token comment">// 2</span>
+context<span class="token punctuation">.</span><span class="token function">setAuthentication</span><span class="token punctuation">(</span>authentication<span class="token punctuation">)</span><span class="token punctuation">;</span>
+
+<span class="token class-name">SecurityContextHolder</span><span class="token punctuation">.</span><span class="token function">setContext</span><span class="token punctuation">(</span>context<span class="token punctuation">)</span><span class="token punctuation">;</span>  <span class="token comment">// 3</span><span aria-hidden="true" class="line-numbers-rows"><span></span><span></span><span></span><span></span><span></span></span></code></pre>
+<ul>
+<li><ol>
+<li>此处创建一个新的<code>SecurityContext</code>而不是使用<code>SecurityContextHolder.getContext().setAuthentication(authentication)</code>, 避免了多线程的条件竞争.</li>
+</ol>
+</li>
+<li><ol start="2">
+<li>接着创建一个新的<code>Authentication</code>对象. Spring Security不关心在<code>SecurityContext</code>中设置什么类型的<code>Authentication</code>实现. 此处使用测试用的<code>TestingAuthenticationToken</code>(实现简单). 通常情况下生产环境使用<code>UsernamePasswordAuthenticationToken(userDetails, password, authorities)</code>.</li>
+</ol>
+</li>
+<li><ol start="3">
+<li>最后在<code>SecurityContextHolder</code>中设置<code>SecurityContext</code>.</li>
+</ol>
+</li>
+</ul>
+<p>通过<code>SecurityContextHolder</code>获取已验证的principal.</p>
+<pre class="line-numbers language-java" data-language="java"><code class="language-java"><span class="token class-name">SecurityContext</span> context <span class="token operator">=</span> <span class="token class-name">SecurityContextHolder</span><span class="token punctuation">.</span><span class="token function">getContext</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+<span class="token class-name">Authentication</span> authentication <span class="token operator">=</span> context<span class="token punctuation">.</span><span class="token function">getAuthentication</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+<span class="token class-name">String</span> username <span class="token operator">=</span> authentication<span class="token punctuation">.</span><span class="token function">getName</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+<span class="token class-name">Object</span> principal <span class="token operator">=</span> authentication<span class="token punctuation">.</span><span class="token function">getPrincipal</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+<span class="token class-name">Collection</span><span class="token generics"><span class="token punctuation">&lt;</span><span class="token operator">?</span> <span class="token keyword">extends</span> <span class="token class-name">GrantedAuthority</span><span class="token punctuation">></span></span> authorities <span class="token operator">=</span> authentication<span class="token punctuation">.</span><span class="token function">getAuthorities</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span><span aria-hidden="true" class="line-numbers-rows"><span></span><span></span><span></span><span></span><span></span></span></code></pre>
+
+<p>默认情况下<code>SecurityContextHolder</code>使用<code>ThreadLocal</code>存储这些详细信息, 这意味着<code>SecurityContext</code>对同一线程中的方法都是可用的, 即使<code>SecurityContext</code>没有显示地作为参数传递给这些方法. Spring Security的<code>FilterChainProxy</code>确保<code>SecurityContext</code>在线程请求后正确的被清理, 所以使用以这种方式使用<code>ThreadLocal</code>是安全的.</p>
+<p>有些应用不适合使用<code>ThreadLocal</code>(例如Swing), 所以<code>SecurityContextHolder</code>可以在启动时配置一个策略以执行上下文如何存储. 包含以下策略:</p>
+<ul>
+<li>MODE_THREADLOCAL</li>
+<li>MODE_INHERITABLETHREADLOCAL</li>
+<li>MODE_GLOBAL</li>
+</ul>
+<p><code>SecurityContextHolder</code>源码如下:</p>
+<pre class="line-numbers language-java" data-language="java"><code class="language-java"><span class="token keyword">public</span> <span class="token keyword">class</span> <span class="token class-name">SecurityContextHolder</span> <span class="token punctuation">&#123;</span>
+
+	<span class="token keyword">public</span> <span class="token keyword">static</span> <span class="token keyword">final</span> <span class="token class-name">String</span> MODE_THREADLOCAL <span class="token operator">=</span> <span class="token string">"MODE_THREADLOCAL"</span><span class="token punctuation">;</span>
+
+	<span class="token keyword">public</span> <span class="token keyword">static</span> <span class="token keyword">final</span> <span class="token class-name">String</span> MODE_INHERITABLETHREADLOCAL <span class="token operator">=</span> <span class="token string">"MODE_INHERITABLETHREADLOCAL"</span><span class="token punctuation">;</span>
+
+	<span class="token keyword">public</span> <span class="token keyword">static</span> <span class="token keyword">final</span> <span class="token class-name">String</span> MODE_GLOBAL <span class="token operator">=</span> <span class="token string">"MODE_GLOBAL"</span><span class="token punctuation">;</span>
+
+	<span class="token keyword">public</span> <span class="token keyword">static</span> <span class="token keyword">final</span> <span class="token class-name">String</span> SYSTEM_PROPERTY <span class="token operator">=</span> <span class="token string">"spring.security.strategy"</span><span class="token punctuation">;</span>
+
+	<span class="token keyword">private</span> <span class="token keyword">static</span> <span class="token class-name">String</span> strategyName <span class="token operator">=</span> <span class="token class-name">System</span><span class="token punctuation">.</span><span class="token function">getProperty</span><span class="token punctuation">(</span>SYSTEM_PROPERTY<span class="token punctuation">)</span><span class="token punctuation">;</span>
+
+	<span class="token keyword">private</span> <span class="token keyword">static</span> <span class="token class-name">SecurityContextHolderStrategy</span> strategy<span class="token punctuation">;</span>
+
+	<span class="token keyword">private</span> <span class="token keyword">static</span> <span class="token keyword">int</span> initializeCount <span class="token operator">=</span> <span class="token number">0</span><span class="token punctuation">;</span>
+
+	<span class="token keyword">static</span> <span class="token punctuation">&#123;</span>
+		<span class="token function">initialize</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+	<span class="token punctuation">&#125;</span>
+
+	<span class="token comment">// 初始化strategy</span>
+	<span class="token keyword">private</span> <span class="token keyword">static</span> <span class="token keyword">void</span> <span class="token function">initialize</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token punctuation">&#123;</span>
+		<span class="token keyword">if</span> <span class="token punctuation">(</span><span class="token operator">!</span><span class="token class-name">StringUtils</span><span class="token punctuation">.</span><span class="token function">hasText</span><span class="token punctuation">(</span>strategyName<span class="token punctuation">)</span><span class="token punctuation">)</span> <span class="token punctuation">&#123;</span>
+			<span class="token comment">// Set default</span>
+			strategyName <span class="token operator">=</span> MODE_THREADLOCAL<span class="token punctuation">;</span>
+		<span class="token punctuation">&#125;</span>
+		<span class="token keyword">if</span> <span class="token punctuation">(</span>strategyName<span class="token punctuation">.</span><span class="token function">equals</span><span class="token punctuation">(</span>MODE_THREADLOCAL<span class="token punctuation">)</span><span class="token punctuation">)</span> <span class="token punctuation">&#123;</span>
+			strategy <span class="token operator">=</span> <span class="token keyword">new</span> <span class="token class-name">ThreadLocalSecurityContextHolderStrategy</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+		<span class="token punctuation">&#125;</span>
+		<span class="token keyword">else</span> <span class="token keyword">if</span> <span class="token punctuation">(</span>strategyName<span class="token punctuation">.</span><span class="token function">equals</span><span class="token punctuation">(</span>MODE_INHERITABLETHREADLOCAL<span class="token punctuation">)</span><span class="token punctuation">)</span> <span class="token punctuation">&#123;</span>
+			strategy <span class="token operator">=</span> <span class="token keyword">new</span> <span class="token class-name">InheritableThreadLocalSecurityContextHolderStrategy</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+		<span class="token punctuation">&#125;</span>
+		<span class="token keyword">else</span> <span class="token keyword">if</span> <span class="token punctuation">(</span>strategyName<span class="token punctuation">.</span><span class="token function">equals</span><span class="token punctuation">(</span>MODE_GLOBAL<span class="token punctuation">)</span><span class="token punctuation">)</span> <span class="token punctuation">&#123;</span>
+			strategy <span class="token operator">=</span> <span class="token keyword">new</span> <span class="token class-name">GlobalSecurityContextHolderStrategy</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+		<span class="token punctuation">&#125;</span>
+		<span class="token keyword">else</span> <span class="token punctuation">&#123;</span>
+			<span class="token comment">// Try to load a custom strategy</span>
+			<span class="token keyword">try</span> <span class="token punctuation">&#123;</span>
+				<span class="token class-name">Class</span><span class="token generics"><span class="token punctuation">&lt;</span><span class="token operator">?</span><span class="token punctuation">></span></span> clazz <span class="token operator">=</span> <span class="token class-name">Class</span><span class="token punctuation">.</span><span class="token function">forName</span><span class="token punctuation">(</span>strategyName<span class="token punctuation">)</span><span class="token punctuation">;</span>
+				<span class="token class-name">Constructor</span><span class="token generics"><span class="token punctuation">&lt;</span><span class="token operator">?</span><span class="token punctuation">></span></span> customStrategy <span class="token operator">=</span> clazz<span class="token punctuation">.</span><span class="token function">getConstructor</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+				strategy <span class="token operator">=</span> <span class="token punctuation">(</span><span class="token class-name">SecurityContextHolderStrategy</span><span class="token punctuation">)</span> customStrategy<span class="token punctuation">.</span><span class="token function">newInstance</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+			<span class="token punctuation">&#125;</span>
+			<span class="token keyword">catch</span> <span class="token punctuation">(</span><span class="token class-name">Exception</span> ex<span class="token punctuation">)</span> <span class="token punctuation">&#123;</span>
+				<span class="token class-name">ReflectionUtils</span><span class="token punctuation">.</span><span class="token function">handleReflectionException</span><span class="token punctuation">(</span>ex<span class="token punctuation">)</span><span class="token punctuation">;</span>
+			<span class="token punctuation">&#125;</span>
+		<span class="token punctuation">&#125;</span>
+		initializeCount<span class="token operator">++</span><span class="token punctuation">;</span>
+	<span class="token punctuation">&#125;</span>
+
+	<span class="token keyword">public</span> <span class="token keyword">static</span> <span class="token keyword">void</span> <span class="token function">clearContext</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token punctuation">&#123;</span>
+		strategy<span class="token punctuation">.</span><span class="token function">clearContext</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+	<span class="token punctuation">&#125;</span>
+
+	<span class="token keyword">public</span> <span class="token keyword">static</span> <span class="token class-name">SecurityContext</span> <span class="token function">getContext</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token punctuation">&#123;</span>
+		<span class="token keyword">return</span> strategy<span class="token punctuation">.</span><span class="token function">getContext</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+	<span class="token punctuation">&#125;</span>
+
+	<span class="token keyword">public</span> <span class="token keyword">static</span> <span class="token keyword">int</span> <span class="token function">getInitializeCount</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token punctuation">&#123;</span>
+		<span class="token keyword">return</span> initializeCount<span class="token punctuation">;</span>
+	<span class="token punctuation">&#125;</span>
+
+	<span class="token keyword">public</span> <span class="token keyword">static</span> <span class="token keyword">void</span> <span class="token function">setContext</span><span class="token punctuation">(</span><span class="token class-name">SecurityContext</span> context<span class="token punctuation">)</span> <span class="token punctuation">&#123;</span>
+		strategy<span class="token punctuation">.</span><span class="token function">setContext</span><span class="token punctuation">(</span>context<span class="token punctuation">)</span><span class="token punctuation">;</span>
+	<span class="token punctuation">&#125;</span>
+
+	<span class="token keyword">public</span> <span class="token keyword">static</span> <span class="token keyword">void</span> <span class="token function">setStrategyName</span><span class="token punctuation">(</span><span class="token class-name">String</span> strategyName<span class="token punctuation">)</span> <span class="token punctuation">&#123;</span>
+		<span class="token class-name">SecurityContextHolder</span><span class="token punctuation">.</span>strategyName <span class="token operator">=</span> strategyName<span class="token punctuation">;</span>
+		<span class="token function">initialize</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+	<span class="token punctuation">&#125;</span>
+
+	<span class="token keyword">public</span> <span class="token keyword">static</span> <span class="token class-name">SecurityContextHolderStrategy</span> <span class="token function">getContextHolderStrategy</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token punctuation">&#123;</span>
+		<span class="token keyword">return</span> strategy<span class="token punctuation">;</span>
+	<span class="token punctuation">&#125;</span>
+
+	<span class="token keyword">public</span> <span class="token keyword">static</span> <span class="token class-name">SecurityContext</span> <span class="token function">createEmptyContext</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token punctuation">&#123;</span>
+		<span class="token keyword">return</span> strategy<span class="token punctuation">.</span><span class="token function">createEmptyContext</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+	<span class="token punctuation">&#125;</span>
+
+	<span class="token annotation punctuation">@Override</span>
+	<span class="token keyword">public</span> <span class="token class-name">String</span> <span class="token function">toString</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token punctuation">&#123;</span>
+		<span class="token keyword">return</span> <span class="token string">"SecurityContextHolder[strategy='"</span> <span class="token operator">+</span> strategyName <span class="token operator">+</span> <span class="token string">"'; initializeCount="</span> <span class="token operator">+</span> initializeCount <span class="token operator">+</span> <span class="token string">"]"</span><span class="token punctuation">;</span>
+	<span class="token punctuation">&#125;</span>
+
+<span class="token punctuation">&#125;</span><span aria-hidden="true" class="line-numbers-rows"><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></span></code></pre>
+<p>从源码中可以看出, <code>SercurityContextHolder</code>内部使用<code>SecurityContextHolderStrategy</code>执行具体的逻辑. 接下来看一下<code>SecurityContextHolderStrategy</code>源码:</p>
+<pre class="line-numbers language-java" data-language="java"><code class="language-java"><span class="token keyword">public</span> <span class="token keyword">interface</span> <span class="token class-name">SecurityContextHolderStrategy</span> <span class="token punctuation">&#123;</span>
+	<span class="token comment">// 清空当前context</span>
+	<span class="token keyword">void</span> <span class="token function">clearContext</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+
+	<span class="token comment">// 获取当前context</span>
+	<span class="token class-name">SecurityContext</span> <span class="token function">getContext</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+	
+	<span class="token comment">// 设置当前context</span>
+	<span class="token keyword">void</span> <span class="token function">setContext</span><span class="token punctuation">(</span><span class="token class-name">SecurityContext</span> context<span class="token punctuation">)</span><span class="token punctuation">;</span>
+		
+	<span class="token comment">// 创建新的空的context实现</span>
+	<span class="token class-name">SecurityContext</span> <span class="token function">createEmptyContext</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+<span class="token punctuation">&#125;</span><span aria-hidden="true" class="line-numbers-rows"><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></span></code></pre>
+<p>接下来看一下常用的一个实现<code>ThreadLocalSecurityContextHolderStrategy</code>:</p>
+<pre class="line-numbers language-java" data-language="java"><code class="language-java"><span class="token keyword">final</span> <span class="token keyword">class</span> <span class="token class-name">ThreadLocalSecurityContextHolderStrategy</span> <span class="token keyword">implements</span>
+		<span class="token class-name">SecurityContextHolderStrategy</span> <span class="token punctuation">&#123;</span>
+
+	<span class="token comment">// 使用ThreadLocal保存SecurityContext</span>
+	<span class="token keyword">private</span> <span class="token keyword">static</span> <span class="token keyword">final</span> <span class="token class-name">ThreadLocal</span><span class="token generics"><span class="token punctuation">&lt;</span><span class="token class-name">SecurityContext</span><span class="token punctuation">></span></span> contextHolder <span class="token operator">=</span> <span class="token keyword">new</span> <span class="token class-name">ThreadLocal</span><span class="token generics"><span class="token punctuation">&lt;</span><span class="token punctuation">></span></span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+
+	<span class="token comment">// ~ Methods</span>
+	<span class="token comment">// ========================================================================================================</span>
+
+	<span class="token keyword">public</span> <span class="token keyword">void</span> <span class="token function">clearContext</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token punctuation">&#123;</span>
+		contextHolder<span class="token punctuation">.</span><span class="token function">remove</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+	<span class="token punctuation">&#125;</span>
+
+	<span class="token keyword">public</span> <span class="token class-name">SecurityContext</span> <span class="token function">getContext</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token punctuation">&#123;</span>
+		<span class="token class-name">SecurityContext</span> ctx <span class="token operator">=</span> contextHolder<span class="token punctuation">.</span><span class="token function">get</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+
+		<span class="token keyword">if</span> <span class="token punctuation">(</span>ctx <span class="token operator">==</span> <span class="token keyword">null</span><span class="token punctuation">)</span> <span class="token punctuation">&#123;</span>
+			ctx <span class="token operator">=</span> <span class="token function">createEmptyContext</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+			contextHolder<span class="token punctuation">.</span><span class="token function">set</span><span class="token punctuation">(</span>ctx<span class="token punctuation">)</span><span class="token punctuation">;</span>
+		<span class="token punctuation">&#125;</span>
+
+		<span class="token keyword">return</span> ctx<span class="token punctuation">;</span>
+	<span class="token punctuation">&#125;</span>
+
+	<span class="token keyword">public</span> <span class="token keyword">void</span> <span class="token function">setContext</span><span class="token punctuation">(</span><span class="token class-name">SecurityContext</span> context<span class="token punctuation">)</span> <span class="token punctuation">&#123;</span>
+		<span class="token class-name">Assert</span><span class="token punctuation">.</span><span class="token function">notNull</span><span class="token punctuation">(</span>context<span class="token punctuation">,</span> <span class="token string">"Only non-null SecurityContext instances are permitted"</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+		contextHolder<span class="token punctuation">.</span><span class="token function">set</span><span class="token punctuation">(</span>context<span class="token punctuation">)</span><span class="token punctuation">;</span>
+	<span class="token punctuation">&#125;</span>
+
+	<span class="token keyword">public</span> <span class="token class-name">SecurityContext</span> <span class="token function">createEmptyContext</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token punctuation">&#123;</span>
+		<span class="token keyword">return</span> <span class="token keyword">new</span> <span class="token class-name">SecurityContextImpl</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+	<span class="token punctuation">&#125;</span>
+<span class="token punctuation">&#125;</span><span aria-hidden="true" class="line-numbers-rows"><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></span></code></pre>
+
+
+<h2 id="SecurityContext"><a href="#SecurityContext" class="headerlink" title="SecurityContext"></a><strong>SecurityContext</strong></h2><blockquote>
+<p><code>SecurityContext</code>可以从<code>SecurityContextHolder</code>中获得. 其包含了一个<code>Authenticaiton</code>对象.</p>
+</blockquote>
+<p>源码如下:</p>
+<pre class="line-numbers language-java" data-language="java"><code class="language-java"><span class="token keyword">public</span> <span class="token keyword">interface</span> <span class="token class-name">SecurityContext</span> <span class="token keyword">extends</span> <span class="token class-name">Serializable</span> <span class="token punctuation">&#123;</span>
+
+	<span class="token class-name">Authentication</span> <span class="token function">getAuthentication</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+
+	<span class="token keyword">void</span> <span class="token function">setAuthentication</span><span class="token punctuation">(</span><span class="token class-name">Authentication</span> authentication<span class="token punctuation">)</span><span class="token punctuation">;</span>
+
+<span class="token punctuation">&#125;</span><span aria-hidden="true" class="line-numbers-rows"><span></span><span></span><span></span><span></span><span></span><span></span><span></span></span></code></pre>
+
+<h2 id="Authentication"><a href="#Authentication" class="headerlink" title="Authentication"></a><strong>Authentication</strong></h2><p><code>Authentication</code>在Spring Security中主要有以下两个目的:</p>
+<ul>
+<li>作为<code>AuthenticationManager</code>的输入, 提供用户提供的身份认证凭据. 这种情况下, <code>isAuthenticated()</code>将返回<code>false</code>.</li>
+<li>表示当前认证的用户. 可以从<code>SecurityContext</code>中获取当前的<code>Authentication</code>.</li>
+</ul>
+<p><code>Authentication</code>主要包含以下属性:</p>
+<ul>
+<li><code>principal</code> - 标识用户. 当使用用户名/密码进行身份认证时, 通常是一个<code>UserDetails</code>的一个实例.</li>
+<li><code>credentials</code> - 通常是密码. 多数情况下, 在用户完成身份认证后会被清除, 以保证不会泄露.</li>
+<li><code>authorities</code> - <code>GrantedAuthority</code>是用户被授予的高级权限. 例如角色或领域(roles or scops).</li>
+</ul>
+<p><code>Authentication</code>源码:</p>
+<pre class="line-numbers language-java" data-language="java"><code class="language-java"><span class="token keyword">public</span> <span class="token keyword">interface</span> <span class="token class-name">Authentication</span> <span class="token keyword">extends</span> <span class="token class-name">Principal</span><span class="token punctuation">,</span> <span class="token class-name">Serializable</span> <span class="token punctuation">&#123;</span>
+
+	<span class="token class-name">Collection</span><span class="token generics"><span class="token punctuation">&lt;</span><span class="token operator">?</span> <span class="token keyword">extends</span> <span class="token class-name">GrantedAuthority</span><span class="token punctuation">></span></span> <span class="token function">getAuthorities</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+	<span class="token comment">// 获取凭证</span>
+	<span class="token class-name">Object</span> <span class="token function">getCredentials</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+	<span class="token comment">// 获取认证请求详细信息, 可能是ip地址, 证书编号等</span>
+	<span class="token class-name">Object</span> <span class="token function">getDetails</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+	<span class="token comment">// 获取主体信息, 通常会是UserDetails</span>
+	<span class="token class-name">Object</span> <span class="token function">getPrincipal</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+	<span class="token comment">// 是否验证成功</span>
+	<span class="token keyword">boolean</span> <span class="token function">isAuthenticated</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+	
+	<span class="token keyword">void</span> <span class="token function">setAuthenticated</span><span class="token punctuation">(</span><span class="token keyword">boolean</span> isAuthenticated<span class="token punctuation">)</span> <span class="token keyword">throws</span> <span class="token class-name">IllegalArgumentException</span><span class="token punctuation">;</span>
+
+<span class="token punctuation">&#125;</span><span aria-hidden="true" class="line-numbers-rows"><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></span></code></pre>
+
+<h2 id="GrantedAuthority"><a href="#GrantedAuthority" class="headerlink" title="GrantedAuthority"></a><strong>GrantedAuthority</strong></h2><p><code>GrantedAuthority</code>是用户被授予的高级权限. 例如roles或scopes.</p>
+<p>通过<code>Authentication.getAuthorities()</code>可以获得<code>GrantedAuthority</code>集合. <code>GrantedAuthority</code>就是授予用户的权限. 通常称这些权限为角色, 例如<code>ROLE_ADMINISTRATOR, ROLE_HR_SUPERVISOR</code>. 这些角色可以用于配置web授权, 方法授权和domain对象授权. 使用用户名/密码方式认证的<code>GrantedAuthority</code>通常由<code>UserDetailService</code>加载. </p>
+<p>源码如下:</p>
+<pre class="line-numbers language-java" data-language="java"><code class="language-java"><span class="token keyword">public</span> <span class="token keyword">interface</span> <span class="token class-name">GrantedAuthority</span> <span class="token keyword">extends</span> <span class="token class-name">Serializable</span> <span class="token punctuation">&#123;</span>
+
+	<span class="token class-name">String</span> <span class="token function">getAuthority</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+
+<span class="token punctuation">&#125;</span><span aria-hidden="true" class="line-numbers-rows"><span></span><span></span><span></span><span></span><span></span></span></code></pre>
+
+<h2 id="AuthenticationManager"><a href="#AuthenticationManager" class="headerlink" title="AuthenticationManager"></a><strong>AuthenticationManager</strong></h2><p><code>AuthenticationManager</code>是定义Spring Security的Filter如何执行认证的API. 在控制器中(即Spring Security的Filter)中调用<code>AuthenticationManager</code>将返回的<code>Authentication</code>设置到<code>SecurityContextHolder</code>中. 如果没有集成Spring Security’s Filters, 也可以直接设置<code>SecurityContextHolder</code>而不适用<code>AuthenticationManager</code>.</p>
+<p>尽管<code>AuthenticationManager</code>的实现可以是任意的, 但是最通用的实现是<code>ProviderManager</code>.</p>
+<p>源码如下:</p>
+<pre class="line-numbers language-java" data-language="java"><code class="language-java"><span class="token keyword">public</span> <span class="token keyword">interface</span> <span class="token class-name">AuthenticationManager</span> <span class="token punctuation">&#123;</span>
+
+	<span class="token class-name">Authentication</span> <span class="token function">authenticate</span><span class="token punctuation">(</span><span class="token class-name">Authentication</span> authentication<span class="token punctuation">)</span> <span class="token keyword">throws</span> <span class="token class-name">AuthenticationException</span><span class="token punctuation">;</span>
+
+<span class="token punctuation">&#125;</span><span aria-hidden="true" class="line-numbers-rows"><span></span><span></span><span></span><span></span><span></span></span></code></pre>
+
+<h2 id="ProviderManager"><a href="#ProviderManager" class="headerlink" title="ProviderManager"></a><strong>ProviderManager</strong></h2><p><code>ProviderManager</code>是<code>AuthenticationManager</code>的一个最常用的实现. <code>ProviderManager</code>委托给<code>AuthenticationProvider</code>列表进行认证. 每个AuthenticationProvider都有机会指示身份验证应该是成功的、失败的，或者指示它不能做出决定，并允许下游的AuthenticationProvider做出决定.如果配置的authenticationprovider中没有一个可以进行身份验证，那么身份验证将抛出ProviderNotFoundException异常，这是一个特殊的AuthenticationException，它指示ProviderManager不支持传入的<code>Authentication</code>类型.</p>
+<p><img src="https://cdn.jsdelivr.net/gh/in-a-day/cdn@main/images/java/spring/spring-security/providermanager.png" alt="ProviderManager" loading="lazy"><em>ProviderManager</em></p>
+<p>实际上，每个AuthenticationProvider都知道如何执行特定类型的身份验证. 例如，一个<code>AuthenticationProvider</code>可能能够验证用户名/密码，而另一个可能能够验证SAML断言。 这允许每个AuthenticationProvider执行非常特定类型的身份验证，同时支持多种身份验证类型，并且只暴露出单个AuthenticationManager bean。</p>
+<p>ProviderManager还允许配置一个可选的父AuthenticationManager，当AuthenticationProvider无法执行身份验证时，该父AuthenticationManager会被使用.父类可以是任何类型的AuthenticationManager，但它通常是ProviderManager的一个实例.</p>
+<p><img src="https://cdn.jsdelivr.net/gh/in-a-day/cdn@main/images/java/spring/spring-security/providermanager-parent.png" alt="ParentProviderManager" loading="lazy"><em>ParentProviderManager</em></p>
+<p>事实上，多个ProviderManager实例可能共享相同的父AuthenticationManager。这在多个SecurityFilterChain实例中比较常见，这些实例有一些共同的身份验证(共享的父AuthenticationManager)，但也有不同的身份验证机制(不同的ProviderManager实例)。</p>
+<p><img src="https://cdn.jsdelivr.net/gh/in-a-day/cdn@main/images/java/spring/spring-security/providermanagers-parent.png" alt="ShareParentProviderManager" loading="lazy"><em>ShareParentProviderManager</em></p>
+<p>默认情况下，ProviderManager将尝试从成功的身份验证请求返回的身份验证对象中清除任何敏感的凭据信息。这可以防止诸如密码之类的信息在HttpSession中被保留的时间超过必要的时间。</p>
+<p>下面看一下ProviderManager的构造方法:</p>
+<pre class="line-numbers language-java" data-language="java"><code class="language-java"><span class="token keyword">public</span> <span class="token class-name">ProviderManager</span><span class="token punctuation">(</span><span class="token class-name">AuthenticationProvider</span><span class="token punctuation">.</span><span class="token punctuation">.</span><span class="token punctuation">.</span> providers<span class="token punctuation">)</span> <span class="token punctuation">&#123;</span>
+	<span class="token keyword">this</span><span class="token punctuation">(</span><span class="token class-name">Arrays</span><span class="token punctuation">.</span><span class="token function">asList</span><span class="token punctuation">(</span>providers<span class="token punctuation">)</span><span class="token punctuation">,</span> <span class="token keyword">null</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+<span class="token punctuation">&#125;</span>
+
+<span class="token comment">/**
+ * Construct a &#123;@link ProviderManager&#125; using the given &#123;@link AuthenticationProvider&#125;s
+ * @param providers the &#123;@link AuthenticationProvider&#125;s to use
+ */</span>
+<span class="token keyword">public</span> <span class="token class-name">ProviderManager</span><span class="token punctuation">(</span><span class="token class-name">List</span><span class="token generics"><span class="token punctuation">&lt;</span><span class="token class-name">AuthenticationProvider</span><span class="token punctuation">></span></span> providers<span class="token punctuation">)</span> <span class="token punctuation">&#123;</span>
+	<span class="token keyword">this</span><span class="token punctuation">(</span>providers<span class="token punctuation">,</span> <span class="token keyword">null</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+<span class="token punctuation">&#125;</span>
+
+<span class="token comment">/**
+ * Construct a &#123;@link ProviderManager&#125; using the provided parameters
+ * @param providers the &#123;@link AuthenticationProvider&#125;s to use
+ * @param parent a parent &#123;@link AuthenticationManager&#125; to fall back to
+ */</span>
+<span class="token keyword">public</span> <span class="token class-name">ProviderManager</span><span class="token punctuation">(</span><span class="token class-name">List</span><span class="token generics"><span class="token punctuation">&lt;</span><span class="token class-name">AuthenticationProvider</span><span class="token punctuation">></span></span> providers<span class="token punctuation">,</span> <span class="token class-name">AuthenticationManager</span> parent<span class="token punctuation">)</span> <span class="token punctuation">&#123;</span>
+	<span class="token class-name">Assert</span><span class="token punctuation">.</span><span class="token function">notNull</span><span class="token punctuation">(</span>providers<span class="token punctuation">,</span> <span class="token string">"providers list cannot be null"</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+	<span class="token keyword">this</span><span class="token punctuation">.</span>providers <span class="token operator">=</span> providers<span class="token punctuation">;</span>
+	<span class="token keyword">this</span><span class="token punctuation">.</span>parent <span class="token operator">=</span> parent<span class="token punctuation">;</span>
+	<span class="token function">checkState</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+<span class="token punctuation">&#125;</span><span aria-hidden="true" class="line-numbers-rows"><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></span></code></pre>
+
+<p>不难看出, ProviderManager可以接受一系列的AuthenticationProvider.</p>
+<p>接着看一下ProviderManager是如何具体实现Authentication的authenticate方法(只截取部分):</p>
+<pre class="line-numbers language-java" data-language="java"><code class="language-java"><span class="token comment">// 循环每个provider	</span>
+<span class="token keyword">for</span> <span class="token punctuation">(</span><span class="token class-name">AuthenticationProvider</span> provider <span class="token operator">:</span> <span class="token function">getProviders</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">)</span> <span class="token punctuation">&#123;</span>
+  <span class="token comment">// 先调用support方法测试该provider是否支持验证toTest</span>
+  <span class="token keyword">if</span> <span class="token punctuation">(</span><span class="token operator">!</span>provider<span class="token punctuation">.</span><span class="token function">supports</span><span class="token punctuation">(</span>toTest<span class="token punctuation">)</span><span class="token punctuation">)</span> <span class="token punctuation">&#123;</span>
+    <span class="token keyword">continue</span><span class="token punctuation">;</span>
+  <span class="token punctuation">&#125;</span>
+
+  <span class="token comment">// ... 省略一些内容</span>
+
+  <span class="token keyword">try</span> <span class="token punctuation">&#123;</span>
+    <span class="token comment">// 调用provider执行验证, 只要有一个验证通过了就返回</span>
+    result <span class="token operator">=</span> provider<span class="token punctuation">.</span><span class="token function">authenticate</span><span class="token punctuation">(</span>authentication<span class="token punctuation">)</span><span class="token punctuation">;</span>
+    <span class="token keyword">if</span> <span class="token punctuation">(</span>result <span class="token operator">!=</span> <span class="token keyword">null</span><span class="token punctuation">)</span> <span class="token punctuation">&#123;</span>
+      <span class="token function">copyDetails</span><span class="token punctuation">(</span>authentication<span class="token punctuation">,</span> result<span class="token punctuation">)</span><span class="token punctuation">;</span>
+      <span class="token keyword">break</span><span class="token punctuation">;</span>
+    <span class="token punctuation">&#125;</span>
+  <span class="token punctuation">&#125;</span>
+  <span class="token keyword">catch</span> <span class="token punctuation">(</span><span class="token class-name">AccountStatusException</span> <span class="token operator">|</span> <span class="token class-name">InternalAuthenticationServiceException</span> ex<span class="token punctuation">)</span> <span class="token punctuation">&#123;</span>
+    <span class="token function">prepareException</span><span class="token punctuation">(</span>ex<span class="token punctuation">,</span> authentication<span class="token punctuation">)</span><span class="token punctuation">;</span>
+    <span class="token keyword">throw</span> ex<span class="token punctuation">;</span>
+  <span class="token punctuation">&#125;</span>
+  <span class="token keyword">catch</span> <span class="token punctuation">(</span><span class="token class-name">AuthenticationException</span> ex<span class="token punctuation">)</span> <span class="token punctuation">&#123;</span>
+    lastException <span class="token operator">=</span> ex<span class="token punctuation">;</span>
+  <span class="token punctuation">&#125;</span>
+<span class="token punctuation">&#125;</span>
+<span class="token comment">// 如果结果为空, 且存在父AuthenticationManager, 使用父AuthenticationManager执行验证</span>
+<span class="token keyword">if</span> <span class="token punctuation">(</span>result <span class="token operator">==</span> <span class="token keyword">null</span> <span class="token operator">&amp;&amp;</span> <span class="token keyword">this</span><span class="token punctuation">.</span>parent <span class="token operator">!=</span> <span class="token keyword">null</span><span class="token punctuation">)</span> <span class="token punctuation">&#123;</span>
+  <span class="token keyword">try</span> <span class="token punctuation">&#123;</span>
+    parentResult <span class="token operator">=</span> <span class="token keyword">this</span><span class="token punctuation">.</span>parent<span class="token punctuation">.</span><span class="token function">authenticate</span><span class="token punctuation">(</span>authentication<span class="token punctuation">)</span><span class="token punctuation">;</span>
+    result <span class="token operator">=</span> parentResult<span class="token punctuation">;</span>
+  <span class="token punctuation">&#125;</span>
+  <span class="token keyword">catch</span> <span class="token punctuation">(</span><span class="token class-name">ProviderNotFoundException</span> ex<span class="token punctuation">)</span> <span class="token punctuation">&#123;</span>
+  <span class="token punctuation">&#125;</span>
+  <span class="token keyword">catch</span> <span class="token punctuation">(</span><span class="token class-name">AuthenticationException</span> ex<span class="token punctuation">)</span> <span class="token punctuation">&#123;</span>
+    parentException <span class="token operator">=</span> ex<span class="token punctuation">;</span>
+    lastException <span class="token operator">=</span> ex<span class="token punctuation">;</span>
+  <span class="token punctuation">&#125;</span>
+<span class="token punctuation">&#125;</span>
+ 
+<span class="token comment">// 验证成功, 清除敏感信息, 例如密码等</span>
+<span class="token keyword">if</span> <span class="token punctuation">(</span>result <span class="token operator">!=</span> <span class="token keyword">null</span><span class="token punctuation">)</span> <span class="token punctuation">&#123;</span>
+  <span class="token keyword">if</span> <span class="token punctuation">(</span><span class="token keyword">this</span><span class="token punctuation">.</span>eraseCredentialsAfterAuthentication <span class="token operator">&amp;&amp;</span> <span class="token punctuation">(</span>result <span class="token keyword">instanceof</span> <span class="token class-name">CredentialsContainer</span><span class="token punctuation">)</span><span class="token punctuation">)</span> <span class="token punctuation">&#123;</span>
+    <span class="token punctuation">(</span><span class="token punctuation">(</span><span class="token class-name">CredentialsContainer</span><span class="token punctuation">)</span> result<span class="token punctuation">)</span><span class="token punctuation">.</span><span class="token function">eraseCredentials</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+  <span class="token punctuation">&#125;</span>
+	<span class="token comment">// ...省略一些代码</span>
+  <span class="token keyword">return</span> result<span class="token punctuation">;</span>
+<span class="token punctuation">&#125;</span>
+
+<span class="token comment">// Parent was null, or didn't authenticate (or throw an exception).</span>
+<span class="token keyword">if</span> <span class="token punctuation">(</span>lastException <span class="token operator">==</span> <span class="token keyword">null</span><span class="token punctuation">)</span> <span class="token punctuation">&#123;</span>
+  lastException <span class="token operator">=</span> <span class="token keyword">new</span> <span class="token class-name">ProviderNotFoundException</span><span class="token punctuation">(</span><span class="token keyword">this</span><span class="token punctuation">.</span>messages<span class="token punctuation">.</span><span class="token function">getMessage</span><span class="token punctuation">(</span><span class="token string">"ProviderManager.providerNotFound"</span><span class="token punctuation">,</span>
+                                                                         <span class="token keyword">new</span> <span class="token class-name">Object</span><span class="token punctuation">[</span><span class="token punctuation">]</span> <span class="token punctuation">&#123;</span> toTest<span class="token punctuation">.</span><span class="token function">getName</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token punctuation">&#125;</span><span class="token punctuation">,</span> <span class="token string">"No AuthenticationProvider found for &#123;0&#125;"</span><span class="token punctuation">)</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+<span class="token punctuation">&#125;</span>
+<span class="token comment">// ... 省略一些代码</span>
+<span class="token comment">// 如果验证未通过, 最后抛出异常</span>
+<span class="token keyword">throw</span> lastException<span class="token punctuation">;</span>
+<span aria-hidden="true" class="line-numbers-rows"><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></span></code></pre>
+
+
+
+<h2 id="AuthenticationProvider"><a href="#AuthenticationProvider" class="headerlink" title="AuthenticationProvider"></a><strong>AuthenticationProvider</strong></h2><p><code>ProviderManager</code>可以注入多个<code>AuthenticationProvider</code>. 每个<code>AuthenticationProvider</code>执行特定类型的认证. 例如<code>DaoAuthenticationProvider</code>支持基于用户名/密码的认证, <code>JwtAuthenticationProvider</code>支持使用JWT token认证.</p>
+<p><code>AuthenticationProvider</code>接口定义了两个方法:</p>
+<pre class="line-numbers language-java" data-language="java"><code class="language-java"><span class="token keyword">public</span> <span class="token keyword">interface</span> <span class="token class-name">AuthenticationProvider</span> <span class="token punctuation">&#123;</span>
+  <span class="token comment">// 验证身份, 如果不支持该authentication类型验证, 则可以返回nullm, 如果验证失败抛出异常</span>
+	<span class="token class-name">Authentication</span> <span class="token function">authenticate</span><span class="token punctuation">(</span><span class="token class-name">Authentication</span> authentication<span class="token punctuation">)</span> <span class="token keyword">throws</span> <span class="token class-name">AuthenticationException</span><span class="token punctuation">;</span>
+	<span class="token comment">// 测试该provider是否支持验证给定的authentication</span>
+	<span class="token keyword">boolean</span> <span class="token function">supports</span><span class="token punctuation">(</span><span class="token class-name">Class</span><span class="token generics"><span class="token punctuation">&lt;</span><span class="token operator">?</span><span class="token punctuation">></span></span> authentication<span class="token punctuation">)</span><span class="token punctuation">;</span>
+<span class="token punctuation">&#125;</span>
+<span aria-hidden="true" class="line-numbers-rows"><span></span><span></span><span></span><span></span><span></span><span></span></span></code></pre>
+
+<p>下面看一下常用的<code>AbstractUserDetailsAuthenticationProvider</code>(<code>DaoAuthenticationProvider</code>就继承自该provider)的authenticate流程:</p>
+<pre class="line-numbers language-java" data-language="java"><code class="language-java"><span aria-hidden="true" class="line-numbers-rows"><span></span></span></code></pre>
+
+
+
+
+
+<h2 id="使用AuthenticationEntryPoint请求凭证"><a href="#使用AuthenticationEntryPoint请求凭证" class="headerlink" title="使用AuthenticationEntryPoint请求凭证"></a><strong>使用AuthenticationEntryPoint请求凭证</strong></h2><p><code>AuthenticationEntryPoint</code>用于发送从客户端请求凭证的HTTP响应.</p>
+<p>有时客户端会主动携带凭证(例如用户名/密码)去请求资源. 在这种情况下, Spring Security不需要再向客户端发送请求凭证的HTTP响应.</p>
+<p>其他情况下, 客户端可能会发送一个未经认证的获取资源请求. 在这种情况下, 使用<code>AuthenticationEntryPoint</code>向客户端请求凭证. <code>AuthenticationEntryPoint</code>可能会重定向到登录页面, 使用<code>WWW-Authenticate</code>头部响应.</p>
+<h2 id="AbstractAuthenticationProcessingFilter"><a href="#AbstractAuthenticationProcessingFilter" class="headerlink" title="AbstractAuthenticationProcessingFilter"></a><strong>AbstractAuthenticationProcessingFilter</strong></h2><p><code>AbstractAuthenticationProcessingFilter</code>作为基础的Filter对用户的凭证进行验证. 在验证凭证之前, Spring Security通常会使用<code>AuthenticationEntryPoint</code>请求凭证.</p>
+<p>然后, <code>AbstractAuthenticationProcessingFilter</code>可以验证任何提交给他的身份认证请求.</p>
+<p><img src="https://cdn.jsdelivr.net/gh/in-a-day/cdn@main/images/java/spring/spring-security/abstractauthenticationprocessingfilter.png" alt="AbstractAuthenticationProcessingFilter" loading="lazy"><em>AbstractAuthenticationProcessingFilter</em></p>
+<ul>
+<li>1-当用户提交他们的凭证后, <code>AbstractAuthenticationProcessingFilter</code>从<code>HttpServletRequest</code>中创建一个待验证的<code>Authentication</code>. 创建的<code>Authentication</code>的类型取决于<code>AbstractAuthenticationProcessingFilter</code>子类. 例如<code>UsernamePasswordAuthenticationFitler</code>根据<code>HttpServletRequest</code>中提交的username和password创建一个<code>UsernamePasswordAuthenticationToken</code>.</li>
+<li>2-将创建的<code>Authentication</code>传递给<code>AuthenticationManager</code>进行验证. </li>
+<li>3-如果验证失败, 执行以下操作:<ul>
+<li>清空<code>SecurityContextHolder</code></li>
+<li>调用<code>RememberMeService.loginFail</code>. 如果未配置remember me, 不执行任何操作.</li>
+<li>调用<code>AuthenticationFailureHandler</code>.</li>
+</ul>
+</li>
+<li>4-如果验证成功, 执行以下操作:<ul>
+<li><code>SessionAuthenticationStrategy</code>收到新的登录通知(用于缓存?).</li>
+<li>在<code>SecurityContextHolder</code>中设置<code>Authentication</code>. 之后使用<code>SecurityContextPersistenceFilter</code>将<code>SecurityContex</code>保存到HttpSession中.</li>
+<li>调用<code>RememberMeService.loginSuccess</code>. 如果未配置remember me, 不执行任何操作.</li>
+<li>通过<code>ApplicationEventPublisher</code>发布一个<code>InteractiveAuthenticationSuccessEvent</code>.</li>
+<li>调用<code>AuthenticationSuccessHandler</code>.</li>
+</ul>
+</li>
+</ul>
+</div><ul class="post-copyright"><li class="post-copyright-author"><strong>本文作者：</strong>z</li><li class="post-copyright-link"><strong>本文链接：</strong><a href="http://nichijou.cloud/2021/03/24/spring/spring-security/spring_security_authentication/" title="Spring Security Authentication(认证)(5.4.5)">http://nichijou.cloud/2021/03/24/spring/spring-security/spring_security_authentication/</a></li><li class="post-copyright-license"><strong>版权声明：</strong>本博客所有文章除特别声明外，均默认采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh" target="_blank" rel="noopener" title="CC BY-NC-SA 4.0 "><svg class="icon"><use xlink:href="#icon-creative-commons-line"></use></svg><svg class="icon"><use xlink:href="#icon-creative-commons-by-line"></use></svg><svg class="icon"><use xlink:href="#icon-creative-commons-nc-line"></use></svg><svg class="icon"><use xlink:href="#icon-creative-commons-sa-line"></use></svg></a> 许可协议。</li></ul></section></article><div class="post-nav"><div class="post-nav-item"><a class="post-nav-prev" href="/2021/03/29/mysql/misc/" rel="prev" title="一些配置"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-arrow-left-s-line"></use></svg><span class="post-nav-text">一些配置</span></a></div><div class="post-nav-item"><a class="post-nav-next" href="/2021/03/24/spring/spring-security/spring_security_with_servlet/" rel="next" title="Spring Security Filter使用(5.4.5)"><span class="post-nav-text">Spring Security Filter使用(5.4.5)</span><svg class="icon" aria-hidden="true"><use xlink:href="#icon-arrow-right-s-line"></use></svg></a></div></div></div></main><footer class="sidebar-translate" id="footer"><div class="copyright"><span>&copy; 2021 </span><span class="with-love" id="animate"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-cloud-line"></use></svg></span><span class="author"> z</span></div><div class="powered"><span>由 <a href="https://hexo.io" target="_blank" rel="noopener">Hexo</a> 驱动 v5.4.0</span><span class="footer-separator">|</span><span>主题 - <a rel="noopener" href="https://github.com/YunYouJun/hexo-theme-yun" target="_blank"><span>Yun</span></a> v1.4.0</span></div></footer><a class="hty-icon-button" id="goUp" aria-label="back-to-top" href="#"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-arrow-up-s-line"></use></svg><svg class="progress-circle-container" viewBox="0 0 100 100"><circle class="progress-circle" id="progressCircle" cx="50" cy="50" r="48" fill="none" stroke="#0078E7" stroke-width="2" stroke-linecap="round"></circle></svg></a><a class="popup-trigger hty-icon-button icon-search" id="search" href="javascript:;" title="搜索"><span class="site-state-item-icon"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-search-line"></use></svg></span></a><script>window.addEventListener("DOMContentLoaded", () => {
+  // Handle and trigger popup window
+  document.querySelector(".popup-trigger").addEventListener("click", () => {
+    document.querySelector(".popup").classList.add("show");
+    setTimeout(() => {
+      document.querySelector(".search-input").focus();
+    }, 100);
+  });
+
+  // Monitor main search box
+  const onPopupClose = () => {
+    document.querySelector(".popup").classList.remove("show");
+  };
+
+  document.querySelector(".popup-btn-close").addEventListener("click", () => {
+    onPopupClose();
+  });
+
+  window.addEventListener("keyup", event => {
+    if (event.key === "Escape") {
+      onPopupClose();
+    }
+  });
+});
+</script><script src="/js/search/local-search.js" defer></script><div class="popup search-popup"><div class="search-header"><span class="popup-btn-close close-icon hty-icon-button"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-close-line"></use></svg></span></div><div class="search-input-container"><input class="search-input" id="local-search-input" type="text" placeholder="搜索..." value=""></div><div id="local-search-result"></div></div></div></body></html>
